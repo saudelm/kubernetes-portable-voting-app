@@ -4,6 +4,8 @@ FROM python:3.11-slim AS base
 # Add curl for healthcheck
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl && \
+    addgroup --system --gid 10001 app && \
+    adduser --system --uid 10001 --ingroup app app && \
     rm -rf /var/lib/apt/lists/*
 
 # Set the application directory
@@ -23,10 +25,14 @@ CMD ["python", "app.py"]
 FROM base AS final
 
 # Copy our code from the current folder to the working directory inside the container
-COPY . .
+COPY --chown=app:app . .
 
-# Make port 80 available for links and/or publish
-EXPOSE 80
+ENV PORT=8080
+
+# Make port 8080 available for links and/or publish
+EXPOSE 8080
+
+USER app
 
 # Define our command to be run when launching the container
-CMD ["gunicorn", "app:app", "-b", "0.0.0.0:80", "--log-file", "-", "--access-logfile", "-", "--workers", "4", "--keep-alive", "0"]
+CMD ["gunicorn", "app:app", "-b", "0.0.0.0:8080", "--log-file", "-", "--access-logfile", "-", "--workers", "4", "--keep-alive", "0"]

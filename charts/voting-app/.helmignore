@@ -1,0 +1,5 @@
+.git/
+.terraform/
+.local/
+*.tfstate
+*.tfstate.*

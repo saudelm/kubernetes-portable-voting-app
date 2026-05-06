@@ -1,0 +1,109 @@
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: []
+
+vote:
+  replicaCount: 1
+  image:
+    repository: voting-vote
+    tag: local
+    pullPolicy: IfNotPresent
+  options:
+    a: Cats
+    b: Dogs
+  service:
+    port: 80
+  ingress:
+    enabled: true
+    className: nginx
+    host: vote.127.0.0.1.nip.io
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+result:
+  replicaCount: 1
+  image:
+    repository: voting-result
+    tag: local
+    pullPolicy: IfNotPresent
+  service:
+    port: 80
+  ingress:
+    enabled: true
+    className: nginx
+    host: result.127.0.0.1.nip.io
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+worker:
+  replicaCount: 1
+  image:
+    repository: voting-worker
+    tag: local
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+redis:
+  image:
+    repository: redis
+    tag: 7-alpine
+    pullPolicy: IfNotPresent
+  service:
+    port: 6379
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+postgres:
+  image:
+    repository: postgres
+    tag: 16-alpine
+    pullPolicy: IfNotPresent
+  service:
+    port: 5432
+  user: postgres
+  password: postgres
+  database: postgres
+  storage:
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+networkPolicy:
+  enabled: true

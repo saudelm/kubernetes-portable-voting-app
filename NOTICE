@@ -1,0 +1,7 @@
+Kubernetes Portable Voting App
+
+This project is based on the Docker example voting app:
+
+https://github.com/dockersamples/example-voting-app
+
+The original project is licensed under the Apache License 2.0. This derivative keeps the original license and adds Helm, Terraform, Windows automation, monitoring and security configuration for academic demonstration purposes.

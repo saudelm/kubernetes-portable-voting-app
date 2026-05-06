@@ -1,65 +1,106 @@
-# Example Voting App
+# Kubernetes Portable Voting App
 
-A simple distributed application running across multiple Docker containers.
+Windows-first adaptation of the Docker example voting app for a portable, on-prem-like Kubernetes management environment.
 
-## Getting started
-
-Download [Docker Desktop](https://www.docker.com/products/docker-desktop) for Mac or Windows. [Docker Compose](https://docs.docker.com/compose) will be automatically installed. On Linux, make sure you have the latest version of [Compose](https://docs.docker.com/compose/install/).
-
-This solution uses Python, Node.js, .NET, with Redis for messaging and Postgres for storage.
-
-Run in this directory to build and run the app:
-
-```shell
-docker compose up
-```
-
-The `vote` app will be running at [http://localhost:8080](http://localhost:8080), and the `results` will be at [http://localhost:8081](http://localhost:8081).
-
-Alternately, if you want to run it on a [Docker Swarm](https://docs.docker.com/engine/swarm/), first make sure you have a swarm. If you don't, run:
-
-```shell
-docker swarm init
-```
-
-Once you have your swarm, in this directory run:
-
-```shell
-docker stack deploy --compose-file docker-stack.yml vote
-```
-
-## Run the app in Kubernetes
-
-The folder k8s-specifications contains the YAML specifications of the Voting App's services.
-
-Run the following command to create the deployments and services. Note it will create these resources in your current namespace (`default` if you haven't changed it.)
-
-```shell
-kubectl create -f k8s-specifications/
-```
-
-The `vote` web app is then available on port 31000 on each host of the cluster, the `result` web app is available on port 31001.
-
-To remove them, run:
-
-```shell
-kubectl delete -f k8s-specifications/
-```
+The project supports a bachelor thesis topic around Kubernetes as a foundation for portable container-centered management. It demonstrates local multi-node Kubernetes with k3d/k3s, local image builds, Helm-based application packaging, Terraform-managed add-ons, Prometheus/Grafana monitoring and a security baseline.
 
 ## Architecture
 
-![Architecture diagram](architecture.excalidraw.png)
+- Kubernetes: k3d/k3s multi-node cluster with 1 server and 2 agents
+- Ingress: ingress-nginx installed by Terraform, Traefik disabled
+- App packaging: Helm chart in `charts/voting-app`
+- Infrastructure/add-ons: Terraform in `infra/onprem-k3d`
+- Monitoring: lightweight Prometheus and Grafana Helm releases
+- Security baseline: Pod Security labels, non-root containers, RBAC, ServiceAccounts, NetworkPolicies
+- Stateful workload: Postgres StatefulSet with PVC
 
-* A front-end web app in [Python](/vote) which lets you vote between two options
-* A [Redis](https://hub.docker.com/_/redis/) which collects new votes
-* A [.NET](/worker/) worker which consumes votes and stores them in…
-* A [Postgres](https://hub.docker.com/_/postgres/) database backed by a Docker volume
-* A [Node.js](/result) web app which shows the results of the voting in real time
+Local URLs:
 
-## Notes
+- Vote: `http://vote.127.0.0.1.nip.io:8080`
+- Result: `http://result.127.0.0.1.nip.io:8080`
+- Grafana: `http://grafana.127.0.0.1.nip.io:8080`
 
-The voting application only accepts one vote per client browser. It does not register additional votes if a vote has already been submitted from a client.
+## Windows Quickstart
 
-This isn't an example of a properly architected perfectly designed distributed app... it's just a simple
-example of the various types of pieces and languages you might see (queues, persistent data, etc), and how to
-deal with them in Docker at a basic level.
+Open PowerShell in the repository root:
+
+```powershell
+cd "C:\Users\sauda\Documents\Codex\2026-05-06\ja-bei-helm-release-monitoring-0\kubernetes-portable-voting-app"
+```
+
+Install portable tools into `.local\bin`:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-tools.ps1
+```
+
+Start Docker Desktop before creating the cluster. Then run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\tools-check.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\cluster-up.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-local.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\tf-init.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\tf-apply.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\pods.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\urls.ps1
+```
+
+`make` targets are provided as optional shortcuts for environments that have `make` available.
+
+## Validation
+
+Run static validation without requiring a live cluster:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\validate.ps1
+```
+
+Equivalent commands:
+
+```powershell
+.\.local\bin\helm.exe lint .\charts\voting-app
+.\.local\bin\helm.exe template voting .\charts\voting-app --namespace voting
+.\.local\bin\terraform.exe -chdir="infra\onprem-k3d" fmt -check
+.\.local\bin\terraform.exe -chdir="infra\onprem-k3d" init -backend=false
+.\.local\bin\terraform.exe -chdir="infra\onprem-k3d" validate
+```
+
+## GitHub And GHCR
+
+The original DockerSamples remote is kept as `upstream`. Do not push to it.
+
+The intended private repository is:
+
+```text
+saudelm/kubernetes-portable-voting-app
+```
+
+After `gh auth login`, push with:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\github-push.ps1
+```
+
+CI builds the three application images and publishes them to GHCR on pushes to `main`:
+
+- `ghcr.io/saudelm/kubernetes-portable-voting-app/vote`
+- `ghcr.io/saudelm/kubernetes-portable-voting-app/result`
+- `ghcr.io/saudelm/kubernetes-portable-voting-app/worker`
+
+The local Helm values default to local images (`voting-vote:local`, `voting-result:local`, `voting-worker:local`) so the Windows demo works before GHCR is configured.
+
+## Thesis Notes
+
+- k3d/k3s is closer to on-prem and edge Kubernetes than Minikube, but it is still a local simulation.
+- Helm values demonstrate parameterization and deployment portability.
+- Terraform makes cluster add-ons and the app deployment reproducible.
+- Stateful workloads remain the hardest part of portability. This demo uses a Postgres PVC, but it is not highly available.
+- GitOps is documented as an extension, not implemented in v1.
+
+See:
+
+- `docs/architecture.md`
+- `docs/security.md`
+- `docs/gitops.md`
+- `docs/portability-evaluation.md`

@@ -1,5 +1,6 @@
 var express = require('express'),
     async = require('async'),
+    path = require('path'),
     { Pool } = require('pg'),
     cookieParser = require('cookie-parser'),
     app = express(),
@@ -7,6 +8,11 @@ var express = require('express'),
     io = require('socket.io')(server);
 
 var port = process.env.PORT || 4000;
+var postgresHost = process.env.POSTGRES_HOST || 'db';
+var postgresPort = parseInt(process.env.POSTGRES_PORT || '5432');
+var postgresUser = process.env.POSTGRES_USER || 'postgres';
+var postgresPassword = process.env.POSTGRES_PASSWORD || 'postgres';
+var postgresDatabase = process.env.POSTGRES_DB || 'postgres';
 
 io.on('connection', function (socket) {
 
@@ -18,7 +24,11 @@ io.on('connection', function (socket) {
 });
 
 var pool = new Pool({
-  connectionString: 'postgres://postgres:postgres@db/postgres'
+  host: postgresHost,
+  port: postgresPort,
+  user: postgresUser,
+  password: postgresPassword,
+  database: postgresDatabase
 });
 
 async.retry(
@@ -69,6 +79,10 @@ app.use(express.static(__dirname + '/views'));
 
 app.get('/', function (req, res) {
   res.sendFile(path.resolve(__dirname + '/views/index.html'));
+});
+
+app.get('/healthz', function (req, res) {
+  res.status(200).send('ok');
 });
 
 server.listen(port, function () {

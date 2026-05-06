@@ -1,6 +1,14 @@
 *.pyc
+__pycache__/
 project.lock.json
 bin/
 obj/
 .vs/
 node_modules/
+.local/
+.terraform/
+terraform.tfstate
+terraform.tfstate.*
+*.tfvars
+*.tfvars.json
+.DS_Store

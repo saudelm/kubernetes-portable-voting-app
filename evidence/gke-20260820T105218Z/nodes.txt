@@ -1,0 +1,3 @@
+NAME                                             STATUS   ROLES    AGE   VERSION               INTERNAL-IP   EXTERNAL-IP      OS-IMAGE                             KERNEL-VERSION   CONTAINER-RUNTIME
+gke-portable-voting-default-pool-cc21b921-hl2v   Ready    <none>   35m   v1.35.6-gke.1641000   10.156.0.4    35.242.253.228   Container-Optimized OS from Google   6.12.85+         containerd://2.1.7
+gke-portable-voting-default-pool-cc21b921-xfjv   Ready    <none>   35m   v1.35.6-gke.1641000   10.156.0.5    34.89.155.101    Container-Optimized OS from Google   6.12.85+         containerd://2.1.7

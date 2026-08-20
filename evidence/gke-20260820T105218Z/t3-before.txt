@@ -1,0 +1,3 @@
+NAME                                      UID
+voting-voting-app-vote-6f8d556494-kll8g   4bc118ea-e96a-49ec-8a0d-ec8bf8294d3b
+voting-voting-app-vote-6f8d556494-vdfzh   ee6ec833-2735-4030-a522-0b0c2f8021e2

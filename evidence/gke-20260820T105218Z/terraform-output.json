@@ -1,0 +1,42 @@
+{
+  "cluster_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "portable-voting"
+  },
+  "get_credentials_command": {
+    "sensitive": false,
+    "type": "string",
+    "value": "gcloud container clusters get-credentials portable-voting --location europe-west3-a --project portable-kubernetes-saud"
+  },
+  "grafana_admin_user": {
+    "sensitive": false,
+    "type": "string",
+    "value": "admin"
+  },
+  "grafana_url": {
+    "sensitive": false,
+    "type": "string",
+    "value": "http://grafana.136.92.43.158.nip.io"
+  },
+  "ingress_ip": {
+    "sensitive": false,
+    "type": "string",
+    "value": "136.92.43.158"
+  },
+  "location": {
+    "sensitive": false,
+    "type": "string",
+    "value": "europe-west3-a"
+  },
+  "result_url": {
+    "sensitive": false,
+    "type": "string",
+    "value": "http://result.136.92.43.158.nip.io"
+  },
+  "vote_url": {
+    "sensitive": false,
+    "type": "string",
+    "value": "http://vote.136.92.43.158.nip.io"
+  }
+}

@@ -1,0 +1,7 @@
+Kubernetes control plane is running at https://34.141.27.156
+GLBCDefaultBackend is running at https://34.141.27.156/api/v1/namespaces/kube-system/services/default-http-backend:http/proxy
+KubeDNS is running at https://34.141.27.156/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+KubeDNSUpstream is running at https://34.141.27.156/api/v1/namespaces/kube-system/services/kube-dns-upstream:dns/proxy
+Metrics-server is running at https://34.141.27.156/api/v1/namespaces/kube-system/services/https:metrics-server:/proxy
+
+To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.

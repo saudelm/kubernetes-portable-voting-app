@@ -1,0 +1,8 @@
+NAME                                        IMAGE
+voting-voting-app-postgres-0                postgres:16.14-bookworm
+voting-voting-app-redis-568f6f7d86-np2sb    redis:7.4.9-alpine
+voting-voting-app-result-7b75bbbf4-xgj2g    ghcr.io/saudelm/kubernetes-portable-voting-app/result:82cde44a838d36f07cc47d9f29351d039cdf0244
+voting-voting-app-result-7b75bbbf4-xwlcj    ghcr.io/saudelm/kubernetes-portable-voting-app/result:82cde44a838d36f07cc47d9f29351d039cdf0244
+voting-voting-app-vote-56985d774-lqcp6      ghcr.io/saudelm/kubernetes-portable-voting-app/vote:82cde44a838d36f07cc47d9f29351d039cdf0244
+voting-voting-app-vote-56985d774-vpxw6      ghcr.io/saudelm/kubernetes-portable-voting-app/vote:82cde44a838d36f07cc47d9f29351d039cdf0244
+voting-voting-app-worker-7565f496d5-xvjlv   ghcr.io/saudelm/kubernetes-portable-voting-app/worker:82cde44a838d36f07cc47d9f29351d039cdf0244

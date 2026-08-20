@@ -1,50 +1,32 @@
-var app = angular.module('catsvsdogs', []);
-var socket = io.connect();
+const socket = io();
+const bg1 = document.getElementById('background-stats-1');
+const bg2 = document.getElementById('background-stats-2');
+const aPercent = document.getElementById('a-percent');
+const bPercent = document.getElementById('b-percent');
+const total = document.getElementById('total');
 
-var bg1 = document.getElementById('background-stats-1');
-var bg2 = document.getElementById('background-stats-2');
+document.body.style.opacity = 1;
 
-app.controller('statsCtrl', function($scope){
-  $scope.aPercent = 50;
-  $scope.bPercent = 50;
+socket.on('scores', function (json) {
+  const data = JSON.parse(json);
+  const a = Number.parseInt(data.a || 0, 10);
+  const b = Number.parseInt(data.b || 0, 10);
+  const percentages = getPercentages(a, b);
+  const voteCount = a + b;
 
-  var updateScores = function(){
-    socket.on('scores', function (json) {
-       data = JSON.parse(json);
-       var a = parseInt(data.a || 0);
-       var b = parseInt(data.b || 0);
-
-       var percentages = getPercentages(a, b);
-
-       bg1.style.width = percentages.a + "%";
-       bg2.style.width = percentages.b + "%";
-
-       $scope.$apply(function () {
-         $scope.aPercent = percentages.a;
-         $scope.bPercent = percentages.b;
-         $scope.total = a + b;
-       });
-    });
-  };
-
-  var init = function(){
-    document.body.style.opacity=1;
-    updateScores();
-  };
-  socket.on('message',function(data){
-    init();
-  });
+  bg1.style.width = `${percentages.a}%`;
+  bg2.style.width = `${percentages.b}%`;
+  aPercent.textContent = `${percentages.a.toFixed(1)}%`;
+  bPercent.textContent = `${percentages.b.toFixed(1)}%`;
+  total.textContent = voteCount === 0
+    ? 'No votes yet'
+    : `${voteCount} ${voteCount === 1 ? 'vote' : 'votes'}`;
 });
 
 function getPercentages(a, b) {
-  var result = {};
-
   if (a + b > 0) {
-    result.a = Math.round(a / (a + b) * 100);
-    result.b = 100 - result.a;
-  } else {
-    result.a = result.b = 50;
+    const aPercentValue = Math.round(a / (a + b) * 100);
+    return { a: aPercentValue, b: 100 - aPercentValue };
   }
-
-  return result;
+  return { a: 50, b: 50 };
 }

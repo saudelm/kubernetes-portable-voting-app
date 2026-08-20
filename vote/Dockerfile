@@ -1,5 +1,5 @@
 # base defines a base stage that uses the official python runtime base image
-FROM python:3.11-slim AS base
+FROM python:3.13.14-slim AS base
 
 # Add curl for healthcheck
 RUN apt-get update && \
@@ -27,7 +27,8 @@ FROM base AS final
 # Copy our code from the current folder to the working directory inside the container
 COPY --chown=app:app . .
 
-ENV PORT=8080
+ENV PORT=8080 \
+    HOME=/tmp
 
 # Make port 8080 available for links and/or publish
 EXPOSE 8080

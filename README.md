@@ -1,40 +1,71 @@
-# Kubernetes Portable Voting App
+# Portable Kubernetes Management Environment
 
-Windows-first adaptation of the Docker example voting app for a portable, on-prem-like Kubernetes management environment.
+Dieser Prototyp untersucht Kubernetes als Grundlage einer portierbaren, containerzentrierten Managementumgebung. Dieselbe Anwendung und dasselbe Helm-Chart werden lokal auf K3d/K3s und in Google Kubernetes Engine (GKE) eingesetzt. Terraform verwaltet die plattformspezifische Infrastruktur und die gemeinsamen Add-ons.
 
-The project supports a bachelor thesis topic around Kubernetes as a foundation for portable container-centered management. It demonstrates local multi-node Kubernetes with k3d/k3s, local image builds, Helm-based application packaging, Terraform-managed add-ons, Prometheus/Grafana monitoring and a security baseline.
+Der Prototyp ist ein Demonstrator fuer eine Bachelorarbeit. Er ist keine produktionsreife Plattform und ersetzt keine Messung in den beiden Zielumgebungen.
 
-## Architecture
+## Architektur
 
-- Kubernetes: k3d/k3s multi-node cluster with 1 server and 2 agents
-- Ingress: ingress-nginx installed by Terraform, Traefik disabled
-- App packaging: Helm chart in `charts/voting-app`
-- Infrastructure/add-ons: Terraform in `infra/onprem-k3d`
-- Monitoring: lightweight Prometheus and Grafana Helm releases
-- Security baseline: Pod Security labels, non-root containers, RBAC, ServiceAccounts, NetworkPolicies
-- Stateful workload: Postgres StatefulSet with PVC
+- Kubernetes lokal: K3d/K3s, ein Server und zwei Agenten
+- Kubernetes Cloud: zonaler GKE-Standardcluster mit separatem Node Pool
+- Routing: Traefik `41.0.2` und die stabile Kubernetes-Ingress-API
+- Paketierung: gemeinsames Helm-Chart unter `charts/voting-app`
+- Bereitstellung: Terraform unter `infra/onprem-k3d` und `infra/gke`
+- Beobachtbarkeit: Prometheus und Grafana
+- Sicherheitsbasis: Pod Security Admission, Non-Root-Container, minimale ServiceAccounts/RBAC-Rechte und NetworkPolicies
+- Persistenz: PostgreSQL als StatefulSet mit PVC
 
-Local URLs:
+Die Ingress-API ist stabil, wird von Kubernetes jedoch nicht mehr erweitert. Eine Migration auf Gateway API ist deshalb als Weiterentwicklung dokumentiert. `ingress-nginx` wird nicht eingesetzt, da das Projekt seit Maerz 2026 eingestellt ist.
+
+## Anwendung
+
+| Komponente | Aufgabe | Laufzeit |
+|---|---|---|
+| `vote` | Stimme erfassen und in Redis schreiben | Python 3.13 / Flask |
+| `redis` | Warteschlange | Redis 7.4.9 |
+| `worker` | Stimmen aus Redis nach PostgreSQL uebertragen | .NET 10 LTS |
+| `postgres` | Stimmen persistent speichern | PostgreSQL 16 |
+| `result` | aggregierte Ergebnisse anzeigen | Node.js 24 LTS |
+
+Die beiden Browseroberflaechen verwenden nur mitgelieferte Assets. Die alte
+AngularJS- und CDN-Abhaengigkeit der Referenzanwendung ist im Prototyp entfernt.
+
+Die Dateien `docker-compose*.yml`, `docker-stack.yml` und `k8s-specifications/`
+dokumentieren den analysierten Ausgangsstand der Referenzanwendung. Der in der
+Arbeit bewertete Prototyp wird ausschliesslich ueber das gemeinsame Helm-Chart
+und die beiden Terraform-Module bereitgestellt.
+
+## Lokaler Schnellstart (macOS/Linux)
+
+Docker Desktop starten und im Projektverzeichnis ausfuehren:
+
+```bash
+make tools-check
+make local
+```
+
+Der kombinierte Lauf erzeugt den Cluster, baut und importiert die drei Images, initialisiert Terraform, installiert die Releases und zeigt Pods sowie URLs. Die Einzelschritte lauten:
+
+```bash
+./scripts/cluster-up.sh
+./scripts/build-local.sh
+./scripts/tf-init.sh
+./scripts/tf-apply.sh
+./scripts/pods.sh
+./scripts/urls.sh
+```
+
+Lokale Endpunkte:
 
 - Vote: `http://vote.127.0.0.1.nip.io:8080`
 - Result: `http://result.127.0.0.1.nip.io:8080`
 - Grafana: `http://grafana.127.0.0.1.nip.io:8080`
 
-## Windows Quickstart
+Das lokale Grafana-Laborkonto lautet standardmaessig `admin` / `admin`. Dieses Kennwort ist ausschliesslich fuer den lokalen Demonstrator vorgesehen.
 
-Open PowerShell in the repository root:
+## Windows
 
-```powershell
-cd "C:\Users\sauda\Documents\Codex\2026-05-06\ja-bei-helm-release-monitoring-0\kubernetes-portable-voting-app"
-```
-
-Install portable tools into `.local\bin`:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-tools.ps1
-```
-
-Start Docker Desktop before creating the cluster. Then run:
+Die bestehenden PowerShell-Skripte bleiben erhalten. Beispiel:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\tools-check.ps1
@@ -42,65 +73,69 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\cluster-up.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-local.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\tf-init.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\tf-apply.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\pods.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\urls.ps1
 ```
 
-`make` targets are provided as optional shortcuts for environments that have `make` available.
+Die entsprechenden Make-Ziele enden auf `-ps`, zum Beispiel `make validate-ps`.
+`install-tools.ps1` installiert nur Helm, Terraform, k3d und GitHub CLI portabel.
+Docker Desktop, kubectl, Python, Node.js/npm und Ruby muessen auf Windows separat im
+`PATH` vorhanden sein; `tools-check.ps1` prueft dies vor dem Lauf.
 
-## Validation
+## Validierung
 
-Run static validation without requiring a live cluster:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\validate.ps1
+```bash
+make validate
 ```
 
-Equivalent commands:
+Der Lauf prueft Helm, beide Terraform-Module, die Vote-Anwendung mit isolierten Tests,
+die Node-Anwendung samt npm-Sicherheitsaudit sowie den statischen Manifestvergleich.
+Terraform-Provider, Python- und npm-Abhaengigkeiten benoetigen beim ersten Lauf
+Internetzugriff.
 
-```powershell
-.\.local\bin\helm.exe lint .\charts\voting-app
-.\.local\bin\helm.exe template voting .\charts\voting-app --namespace voting
-.\.local\bin\terraform.exe -chdir="infra\onprem-k3d" fmt -check
-.\.local\bin\terraform.exe -chdir="infra\onprem-k3d" init -backend=false
-.\.local\bin\terraform.exe -chdir="infra\onprem-k3d" validate
+Nur den Portabilitaetsvergleich ausfuehren:
+
+```bash
+make portability
 ```
 
-## GitHub And GHCR
+Die erzeugten Nachweise liegen unter:
 
-The original DockerSamples remote is kept as `upstream`. Do not push to it.
+- `evidence/portability-comparison.json`
+- `evidence/portability-comparison.md`
 
-The intended private repository is:
+Aktueller statischer Befund: 35 von 35 Objektidentitaeten werden wiederverwendet; 98,69 % der verglichenen Blattwerte sind gleich. Die acht Unterschiede betreffen ausschliesslich Image-Referenzen, Replikate, externe Hostnamen und StorageClass. Das ist kein Laufzeitnachweis.
 
-```text
-saudelm/kubernetes-portable-voting-app
+## Laufzeitnachweise
+
+Nach einer echten Bereitstellung werden maschinenlesbare Nachweise gesammelt:
+
+```bash
+./scripts/collect-evidence.sh local
+./scripts/collect-evidence.sh gke
 ```
 
-After `gh auth login`, push with:
+Die Ausgabe wird zeitgestempelt unter `evidence/` abgelegt. Screenshots werden zusaetzlich nach der Checkliste in `docs/gke-ergebnisse-VORLAGE.md` erstellt.
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\github-push.ps1
-```
+## GKE
 
-CI builds the three application images and publishes them to GHCR on pushes to `main`:
+Die vollstaendige Anleitung befindet sich in `docs/gke-deployment.md`. Terraform reserviert vorab eine regionale IP und leitet daraus die nip.io-Hostnamen ab. Dadurch genuegt ein geplanter Terraform-Durchlauf; eine manuelle Aenderung von Helm-Werten zwischen zwei Laeufen ist nicht erforderlich.
 
-- `ghcr.io/saudelm/kubernetes-portable-voting-app/vote`
-- `ghcr.io/saudelm/kubernetes-portable-voting-app/result`
-- `ghcr.io/saudelm/kubernetes-portable-voting-app/worker`
+Fuer GKE sind ein unveraenderlicher Commit-SHA als `image_tag` sowie sichere PostgreSQL- und Grafana-Kennwoerter Pflicht. Nach dem Versuch muss die Umgebung mit `terraform destroy` abgebaut werden, weil Cluster, Compute, Load Balancer und Persistent Disk Kosten verursachen.
 
-The local Helm values default to local images (`voting-vote:local`, `voting-result:local`, `voting-worker:local`) so the Windows demo works before GHCR is configured.
+## Grenzen
 
-## Thesis Notes
+- K3d simuliert eine lokale On-Premise-nahe Umgebung, aber keine reale Unternehmensinfrastruktur.
+- PostgreSQL hat eine Instanz, kein automatisches Backup und kein clusteruebergreifendes Restore-Verfahren.
+- Redis verwendet im Demonstrator `emptyDir`; noch nicht verarbeitete Stimmen koennen bei einem Redis-Pod-Verlust verloren gehen.
+- nip.io und HTTP dienen nur dem Experiment; produktiv sind kontrolliertes DNS und TLS erforderlich.
+- Terraform-Zustand kann Geheimnisse enthalten und darf nicht versioniert werden.
+- Portabilitaet bedeutet hier kontrollierte Anpassbarkeit, nicht voellige Unabhaengigkeit von Infrastruktur und Cloud-Diensten.
 
-- k3d/k3s is closer to on-prem and edge Kubernetes than Minikube, but it is still a local simulation.
-- Helm values demonstrate parameterization and deployment portability.
-- Terraform makes cluster add-ons and the app deployment reproducible.
-- Stateful workloads remain the hardest part of portability. This demo uses a Postgres PVC, but it is not highly available.
-- GitOps is documented as an extension, not implemented in v1.
-
-See:
+Weitere Dokumente:
 
 - `docs/architecture.md`
 - `docs/security.md`
-- `docs/gitops.md`
 - `docs/portability-evaluation.md`
+- `docs/local-deployment.md`
+- `docs/gke-deployment.md`
+- `docs/gke-ergebnisse-VORLAGE.md`
+- `docs/gitops.md`

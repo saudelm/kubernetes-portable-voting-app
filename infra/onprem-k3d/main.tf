@@ -511,7 +511,7 @@ locals {
   }
 }
 
-resource "kubernetes_namespace_v1" "ingress_nginx" {
+resource "kubernetes_namespace_v1" "traefik" {
   metadata {
     name = var.ingress_namespace
   }
@@ -536,43 +536,54 @@ resource "kubernetes_namespace_v1" "app" {
   }
 }
 
-resource "helm_release" "ingress_nginx" {
-  name       = "ingress-nginx"
-  repository = "https://kubernetes.github.io/ingress-nginx"
-  chart      = "ingress-nginx"
-  version    = "4.15.1"
-  namespace  = kubernetes_namespace_v1.ingress_nginx.metadata[0].name
+resource "helm_release" "traefik" {
+  name       = "traefik"
+  repository = "https://traefik.github.io/charts"
+  chart      = "traefik"
+  version    = "41.0.2"
+  namespace  = kubernetes_namespace_v1.traefik.metadata[0].name
 
   wait    = true
   timeout = 900
 
   values = [
     yamlencode({
-      controller = {
-        ingressClassResource = {
-          name    = "nginx"
-          enabled = true
-          default = true
+      ingressClass = {
+        enabled        = true
+        isDefaultClass = true
+        name           = "traefik"
+      }
+      providers = {
+        kubernetesCRD = {
+          enabled = false
         }
-        watchIngressWithoutClass = true
-        service = {
+        kubernetesIngress = {
+          enabled      = true
+          ingressClass = "traefik"
+          publishedService = {
+            enabled = true
+          }
+        }
+      }
+      service = {
+        spec = {
           type = "LoadBalancer"
         }
-        resources = {
-          requests = {
-            cpu    = "100m"
-            memory = "128Mi"
-          }
-          limits = {
-            cpu    = "500m"
-            memory = "512Mi"
-          }
+      }
+      resources = {
+        requests = {
+          cpu    = "100m"
+          memory = "128Mi"
+        }
+        limits = {
+          cpu    = "500m"
+          memory = "512Mi"
         }
       }
     })
   ]
 
-  depends_on = [kubernetes_namespace_v1.ingress_nginx]
+  depends_on = [kubernetes_namespace_v1.traefik]
 }
 
 resource "helm_release" "voting_app" {
@@ -588,11 +599,14 @@ resource "helm_release" "voting_app" {
       postgres = {
         password = var.postgres_password
       }
+      ingressController = {
+        namespace = var.ingress_namespace
+      }
     })
   ]
 
   depends_on = [
-    helm_release.ingress_nginx,
+    helm_release.traefik,
     kubernetes_namespace_v1.app
   ]
 }
@@ -665,7 +679,7 @@ resource "helm_release" "grafana" {
       }
       ingress = {
         enabled          = true
-        ingressClassName = "nginx"
+        ingressClassName = "traefik"
         hosts            = ["grafana.127.0.0.1.nip.io"]
       }
       persistence = {
@@ -725,7 +739,7 @@ resource "helm_release" "grafana" {
   ]
 
   depends_on = [
-    helm_release.ingress_nginx,
+    helm_release.traefik,
     helm_release.prometheus
   ]
 }

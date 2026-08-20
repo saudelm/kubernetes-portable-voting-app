@@ -8,7 +8,6 @@
     <meta name="keywords" content="docker-compose, docker, stack">
     <meta name="author" content="Tutum dev team">
     <link rel='stylesheet' href="{{ url_for('static',filename='stylesheets/style.css') }}" />
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
   </head>
   <body>
     <div id="content-container">
@@ -26,22 +25,16 @@
         </div>
       </div>
     </div>
-    <script src="http://code.jquery.com/jquery-latest.min.js" type="text/javascript"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.js"></script>
-
     {% if vote %}
     <script>
-      var vote = "{{vote}}";
+      const vote = {{ vote | tojson }};
+      const selected = document.getElementById(vote);
+      const other = document.getElementById(vote === "a" ? "b" : "a");
 
-      if(vote == "a"){
-        $(".a").prop('disabled', true);
-        $(".a").html('{{option_a}} <i class="fa fa-check-circle"></i>');
-        $(".b").css('opacity','0.5');
-      }
-      if(vote == "b"){
-        $(".b").prop('disabled', true);
-        $(".b").html('{{option_b}} <i class="fa fa-check-circle"></i>');
-        $(".a").css('opacity','0.5');
+      if (selected && other) {
+        selected.disabled = true;
+        selected.textContent = `${selected.textContent} (selected)`;
+        other.style.opacity = "0.5";
       }
     </script>
     {% endif %}

@@ -29,11 +29,6 @@ namespace Worker
                 var redisConn = OpenRedisConnection(redisHost, redisPort);
                 var redis = redisConn.GetDatabase();
 
-                // Keep alive is not implemented in Npgsql yet. This workaround was recommended:
-                // https://github.com/npgsql/npgsql/issues/1214#issuecomment-235828359
-                var keepAliveCommand = pgsql.CreateCommand();
-                keepAliveCommand.CommandText = "SELECT 1";
-
                 var definition = new { vote = "", voter_id = "" };
                 while (true)
                 {
@@ -47,23 +42,32 @@ namespace Worker
                         redis = redisConn.GetDatabase();
                     }
                     string json = redis.ListLeftPopAsync("votes").Result;
+                    if (!pgsql.State.Equals(System.Data.ConnectionState.Open))
+                    {
+                        Console.WriteLine("Reconnecting DB");
+                        pgsql.Dispose();
+                        pgsql = OpenDbConnection(postgresConnectionString);
+                    }
+
                     if (json != null)
                     {
                         var vote = JsonConvert.DeserializeAnonymousType(json, definition);
                         Console.WriteLine($"Processing vote for '{vote.vote}' by '{vote.voter_id}'");
-                        // Reconnect DB if down
-                        if (!pgsql.State.Equals(System.Data.ConnectionState.Open))
+                        try
                         {
-                            Console.WriteLine("Reconnecting DB");
-                            pgsql = OpenDbConnection(postgresConnectionString);
-                        }
-                        else
-                        { // Normal +1 vote requested
                             UpdateVote(pgsql, vote.voter_id, vote.vote);
+                        }
+                        catch
+                        {
+                            // Preserve the item for the restarted worker if the database write fails.
+                            redis.ListLeftPush("votes", json);
+                            throw;
                         }
                     }
                     else
                     {
+                        using var keepAliveCommand = pgsql.CreateCommand();
+                        keepAliveCommand.CommandText = "SELECT 1";
                         keepAliveCommand.ExecuteNonQuery();
                     }
                 }
@@ -154,7 +158,7 @@ namespace Worker
                 command.Parameters.AddWithValue("@vote", vote);
                 command.ExecuteNonQuery();
             }
-            catch (DbException)
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
             {
                 command.CommandText = "UPDATE votes SET vote = @vote WHERE id = @id";
                 command.ExecuteNonQuery();

@@ -1,34 +1,60 @@
-# Architecture
+# Architektur
 
-## Goal
+## Ziel
 
-The project demonstrates a portable, container-centered management environment for a small multi-service application. The local target is Windows with Docker Desktop and k3d/k3s.
+Der Prototyp demonstriert eine portierbare Managementumgebung fuer eine kleine Mehrkomponentenanwendung. Die Vergleichsziele sind ein lokaler, On-Premise-naher K3d/K3s-Cluster und ein verwalteter GKE-Cluster. Die zentrale Designregel lautet: Anwendungsartefakte bleiben gemeinsam, Zielumgebungsdetails werden als explizite Parameter oder Infrastrukturmodule gekapselt.
 
-## Runtime Model
+## Schichten
 
-- k3d creates a k3s cluster with one server node and two agent nodes.
-- Traefik is disabled to avoid hidden defaults and to keep ingress-nginx managed by Terraform.
-- Host ports are mapped through the k3d load balancer:
-  - HTTP: `8080`
-  - HTTPS: `8443`
-- Terraform installs namespaces, ingress-nginx, the app Helm chart, Prometheus and Grafana.
+1. **Anwendung:** `vote`, `redis`, `worker`, `postgres` und `result`.
+2. **Container:** OCI-Images mit Non-Root-Laufzeit und festen Anwendungsports.
+3. **Orchestrierung:** Standardobjekte wie Deployment, StatefulSet, Service, Ingress, ConfigMap, Secret, ServiceAccount und NetworkPolicy.
+4. **Paketierung:** ein gemeinsames Helm-Chart mit lokalen und GKE-spezifischen Values.
+5. **Plattformautomatisierung:** getrennte Terraform-Root-Module fuer K3d und GKE.
+6. **Betrieb:** Traefik, Prometheus und Grafana als versionierte Helm-Releases.
 
-## Application Model
+## Lokale Umgebung
 
-The voting app has five runtime components:
+- K3d erzeugt einen K3s-Cluster mit einem Server und zwei Agenten.
+- Der in K3s enthaltene Traefik wird bei der Clustererzeugung deaktiviert.
+- Terraform installiert eine explizit versionierte Traefik-Version, Anwendung und Monitoring.
+- Der K3d-Load-Balancer bildet HTTP auf Host-Port `8080` und HTTPS auf `8443` ab.
+- Lokale Images werden in den Cluster importiert und tragen den Tag `local`.
+- Fuer PostgreSQL greift die Standard-StorageClass des Clusters.
 
-- `vote`: Flask UI that writes votes into Redis
-- `redis`: queue for incoming votes
-- `worker`: .NET worker that reads Redis and writes Postgres
-- `postgres`: persistent database in a StatefulSet with a PVC
-- `result`: Node.js UI that reads aggregated vote counts from Postgres
+## GKE-Umgebung
 
-All services are internal `ClusterIP` services. External access goes through ingress-nginx.
+- Terraform aktiviert Compute Engine API und Kubernetes Engine API.
+- Ein zonaler GKE-Standardcluster und ein separater Node Pool werden erzeugt.
+- GKE Dataplane V2 setzt die NetworkPolicies durch.
+- Eine regionale statische IP wird vor dem Ingress-Controller reserviert.
+- Traefik erhaelt diese IP als `loadBalancerIP`; Vote-, Result- und Grafana-Hosts werden daraus abgeleitet.
+- Die Anwendung verwendet unveraenderliche GHCR-Images mit demselben Commit-SHA.
+- PostgreSQL verwendet die GKE-StorageClass `standard-rwo`.
 
-## Portability Mechanisms
+## Anwendungspfad
 
-- Docker images isolate runtime dependencies.
-- Helm packages the Kubernetes objects as a reusable chart.
-- Helm values expose image names, tags, hosts and app options.
-- Terraform reproduces add-ons and namespaces.
-- k3d/k3s provides a local multi-node target that is closer to edge or on-prem scenarios than single-node Minikube.
+1. `vote` nimmt eine Stimme an und schreibt sie in Redis.
+2. `worker` liest aus Redis und schreibt den Datensatz nach PostgreSQL.
+3. `result` fragt PostgreSQL ab und aktualisiert die Anzeige ueber Socket.IO.
+4. Vote und Result sind ueber Traefik erreichbar; die Datenkomponenten bleiben als `ClusterIP` intern.
+
+## Portabilitaetsmechanismen
+
+- Container kapseln Laufzeitabhaengigkeiten.
+- Kubernetes-Standardobjekte beschreiben den gemeinsamen Sollzustand.
+- Helm parametrisiert Registry, Tag, Replikate, Hosts und StorageClass.
+- Terraform reproduziert Infrastruktur und Plattformdienste.
+- Die statische Analyse vergleicht beide Helm-Renderings auf Objekt- und Feldebene.
+- Laufzeittests pruefen Durchstich, Persistenz, Selbstheilung und Netzisolation getrennt je Zielumgebung.
+
+## Bewusste Grenzen
+
+Die stabile Ingress-API bleibt fuer den abgegrenzten Prototyp erhalten. Kubernetes entwickelt diese API nicht mehr funktional weiter; Gateway API ist die vorgesehene Weiterentwicklung. Ein Wechsel wuerde zusaetzliche CRDs und einen breiteren Evaluationsumfang erfordern und wird deshalb als Folgeschritt behandelt.
+
+Stateful Portability ist nur teilweise erreicht. Das gemeinsame StatefulSet ist portierbar, das Persistenzmedium und ein belastbarer Migrationsweg sind es nicht automatisch. Der Prototyp enthaelt weder Hochverfuegbarkeit noch Backup/Restore zwischen Clustern.
+
+Redis ist bewusst nur eine fluechtige Warteschlange mit `emptyDir`. PostgreSQL ist
+das System of Record; noch nicht durch den Worker verarbeitete Stimmen koennen bei
+einem Redis-Pod-Verlust trotzdem verloren gehen. Fuer Produktion waeren eine
+persistente Queue oder ein belastbares Acknowledgement-Verfahren erforderlich.

@@ -2,7 +2,6 @@ var express = require('express'),
     async = require('async'),
     path = require('path'),
     { Pool } = require('pg'),
-    cookieParser = require('cookie-parser'),
     app = express(),
     server = require('http').Server(app),
     io = require('socket.io')(server);
@@ -73,7 +72,6 @@ function collectVotesFromResult(result) {
   return votes;
 }
 
-app.use(cookieParser());
 app.use(express.urlencoded());
 app.use(express.static(__dirname + '/views'));
 
@@ -83,6 +81,15 @@ app.get('/', function (req, res) {
 
 app.get('/healthz', function (req, res) {
   res.status(200).send('ok');
+});
+
+app.get('/readyz', async function (req, res) {
+  try {
+    await pool.query('SELECT 1');
+    res.status(200).send('ready');
+  } catch (err) {
+    res.status(503).send('database unavailable');
+  }
 });
 
 server.listen(port, function () {

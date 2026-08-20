@@ -49,7 +49,7 @@ Die praktische Managementumgebung umfasst insbesondere folgende Aspekte:
 - Docker-basierter Build der Anwendungsimages fuer vote, result und worker
 - Vorbereitung einer Container Registry ueber GitHub Container Registry (GHCR)
 - Helm-Chart mit parametrisierbaren Values fuer Images, Hosts, Ressourcen und Anwendungskonfiguration
-- Terraform-Konfiguration zur reproduzierbaren Bereitstellung von Namespaces, ingress-nginx, Anwendung und Monitoring
+- Terraform-Konfiguration zur reproduzierbaren Bereitstellung von Namespaces, Traefik, Anwendung und Monitoring
 - PersistentVolumeClaim fuer PostgreSQL statt rein fluechtiger Datenhaltung
 - Ingress-Konfiguration fuer die externe Erreichbarkeit der Web-Komponenten
 - Secrets und ConfigMaps fuer Konfigurations- und Zugangsdaten

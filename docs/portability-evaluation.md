@@ -1,32 +1,58 @@
-# Portability Evaluation
+# Portabilitaetsevaluation
 
-## What Is Portable
+## Untersuchungslogik
 
-- The application is split into container images.
-- Kubernetes manifests are generated through Helm and can be parameterized.
-- Terraform can reproduce namespaces and add-ons.
-- ingress-nginx, Prometheus and Grafana are installed as standard Helm charts.
-- The app avoids hardcoded service names in source code and uses environment variables.
+Die Evaluation trennt drei Evidenzarten:
 
-## What Is Environment-Specific
+1. **Statische Evidenz:** Vergleich der lokal und fuer GKE gerenderten Helm-Manifeste.
+2. **Bereitstellungsevidenz:** Terraform-, Helm- und Kubernetes-Ausgaben aus jeder realen Zielumgebung.
+3. **Laufzeitevidenz:** reproduzierbare Tests T1 bis T4 mit Zeitstempel und Nachweisdatei.
 
-- k3d host port mappings are local to Docker Desktop.
-- nip.io hostnames are convenient for local demos, not a production DNS model.
-- Storage behavior depends on the cluster storage class.
-- NetworkPolicy enforcement depends on the CNI implementation.
-- GHCR access requires credentials in non-public environments.
+Statische Ergebnisse duerfen nicht als erfolgreiche Cloud-Bereitstellung bezeichnet werden.
 
-## Stateful Workload Limits
+## Kriterien
 
-Postgres uses a PVC instead of `emptyDir`, so data survives pod restarts. This is more realistic than the original demo. It is still not highly available:
+| Kriterium | Operationalisierung | Evidenz |
+|---|---|---|
+| K1 Artefaktwiederverwendung | gleiche Kubernetes-Objektidentitaeten in beiden Renderings | `evidence/portability-comparison.json` |
+| K2 Begrenzte Anpassung | Unterschiede nur in vorab definierten Parameterklassen | statischer Felddiff |
+| K3 Reproduzierbarkeit | Bereitstellung aus dokumentierten Befehlen und versionierten Dateien | Terraform-/Helm-Ausgaben |
+| K4 Funktionsfaehigkeit | Vote wird nach dem Durchstich in Result angezeigt | T1 je Umgebung |
+| K5 Betriebsverhalten | Persistenz, Selbstheilung und Policy-Durchsetzung funktionieren | T2 bis T4 je Umgebung |
+| K6 Grenzen | verbleibende Provider-, Storage-, Netzwerk- und Betriebsbindung ist dokumentiert | Analyse und Fehlerprotokoll |
 
-- one database replica
-- no automated backups
-- no failover
-- no cross-cluster migration process
+## Statischer Befund
 
-This is a useful thesis point: stateless services are comparatively portable, while stateful services require storage, backup, restore and operational decisions that are tied to the target environment.
+`scripts/compare-portability.rb` rendert beide Values-Varianten und vergleicht alle Objekte strukturiert. Der aktuelle Stand ergibt:
 
-## Conclusion
+- 35 lokale und 35 GKE-Objekte,
+- 35 gemeinsame Objektidentitaeten und damit 100 % Objektwiederverwendung,
+- 98,69 % gleiche Blattwerte,
+- acht erwartete Unterschiede,
+- keine unerwartete Abweichung.
 
-k3d/k3s is a good local proxy for an on-prem or edge-style Kubernetes environment. It is not a substitute for production validation on real infrastructure. The project should be presented as a reproducible demonstration environment and as a basis for discussing the boundaries of Kubernetes portability.
+Die acht Unterschiede sind drei Image-Referenzen, zwei Replikatzahlen, zwei externe Hostnamen und eine StorageClass. Die Werte belegen eine weitgehende Wiederverwendung der Anwendungsmanifeste, nicht die vollstaendige Infrastrukturunabhaengigkeit.
+
+## Laufzeittests
+
+| Test | Ziel | Erfolgskriterium |
+|---|---|---|
+| T1 Durchstich | Ende-zu-Ende-Funktion | abgegebene Stimme erscheint in Result |
+| T2 Persistenz | Zustand nach Pod-Ersatz | Tabelleninhalt vor und nach PostgreSQL-Pod-Neustart ist gleich |
+| T3 Selbstheilung | Controllerverhalten | geloeschte Vote-Pods werden ersetzt und alle Replikate sind wieder Ready |
+| T4 Netzisolation | Policy-Wirkung | Vote erreicht Redis, aber nicht PostgreSQL |
+
+Die Befehle und Nachweisfelder stehen in `docs/gke-deployment.md` und `docs/gke-ergebnisse-VORLAGE.md`.
+
+## Umgebungsbindung
+
+- K3d-Portabbildungen sind spezifisch fuer den lokalen Docker-Host.
+- GKE erfordert Projekt, Abrechnung, IAM, API-Aktivierung und regionale Ressourcen.
+- nip.io ist eine Experimenthilfe und kein produktives DNS-Modell.
+- StorageClass, Volume-Implementierung und Datenmigration bleiben infrastrukturspezifisch.
+- NetworkPolicy-Verhalten haengt vom CNI ab.
+- Oeffentliche oder authentifizierte Registry-Erreichbarkeit muss je Umgebung geloest werden.
+
+## Gueltigkeitsgrenzen
+
+Der Demonstrator untersucht eine Anwendung, zwei konkrete Zielumgebungen und einen kurzen Beobachtungszeitraum. Er erlaubt keine Aussage ueber alle Kubernetes-Distributionen, Langzeitbetrieb, Hochverfuegbarkeit, Lastspitzen oder eine vollstaendige Cloud-Migration. K3d ist eine lokale Naeherung an On-Premise und kein Ersatz fuer einen realen Bare-Metal- oder Virtualisierungscluster.

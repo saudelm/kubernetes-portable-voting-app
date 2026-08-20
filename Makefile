@@ -1,31 +1,66 @@
-.PHONY: install-tools tools-check cluster-up build-local tf-init tf-apply pods urls validate github-push
+SHELL := /bin/bash
 
-install-tools:
-	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-tools.ps1
+.PHONY: tools-check cluster-up build-local tf-init tf-apply local pods urls validate portability evidence \
+	install-tools-ps tools-check-ps cluster-up-ps build-local-ps tf-init-ps tf-apply-ps pods-ps urls-ps validate-ps github-push-ps
 
 tools-check:
-	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tools-check.ps1
+	./scripts/tools-check.sh
 
 cluster-up:
-	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cluster-up.ps1
+	./scripts/cluster-up.sh
 
 build-local:
-	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-local.ps1
+	./scripts/build-local.sh
 
 tf-init:
-	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tf-init.ps1
+	./scripts/tf-init.sh
 
 tf-apply:
-	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tf-apply.ps1
+	./scripts/tf-apply.sh
+
+local: cluster-up build-local tf-init tf-apply pods urls
 
 pods:
-	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/pods.ps1
+	./scripts/pods.sh
 
 urls:
-	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/urls.ps1
+	./scripts/urls.sh
 
 validate:
+	./scripts/validate.sh
+
+portability:
+	ruby scripts/compare-portability.rb
+
+evidence:
+	./scripts/collect-evidence.sh local
+
+install-tools-ps:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-tools.ps1
+
+tools-check-ps:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tools-check.ps1
+
+cluster-up-ps:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cluster-up.ps1
+
+build-local-ps:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-local.ps1
+
+tf-init-ps:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tf-init.ps1
+
+tf-apply-ps:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tf-apply.ps1
+
+pods-ps:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/pods.ps1
+
+urls-ps:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/urls.ps1
+
+validate-ps:
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate.ps1
 
-github-push:
+github-push-ps:
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/github-push.ps1

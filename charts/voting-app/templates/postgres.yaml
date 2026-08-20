@@ -74,6 +74,9 @@ spec:
       spec:
         accessModes:
           - ReadWriteOnce
+        {{- with .Values.postgres.storage.className }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
         resources:
           requests:
             storage: {{ .Values.postgres.storage.size }}
@@ -86,7 +89,7 @@ metadata:
     {{- include "voting-app.labels" . | nindent 4 }}
     app.kubernetes.io/component: postgres
 spec:
-  type: ClusterIP
+  clusterIP: None
   ports:
     - name: postgres
       port: {{ .Values.postgres.service.port }}

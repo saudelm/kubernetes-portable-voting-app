@@ -16,7 +16,7 @@ vote:
     port: 80
   ingress:
     enabled: true
-    className: nginx
+    className: traefik
     host: vote.127.0.0.1.nip.io
   resources:
     requests:
@@ -36,7 +36,7 @@ result:
     port: 80
   ingress:
     enabled: true
-    className: nginx
+    className: traefik
     host: result.127.0.0.1.nip.io
   resources:
     requests:
@@ -63,7 +63,7 @@ worker:
 redis:
   image:
     repository: redis
-    tag: 7-alpine
+    tag: 7.4.9-alpine
     pullPolicy: IfNotPresent
   service:
     port: 6379
@@ -78,7 +78,7 @@ redis:
 postgres:
   image:
     repository: postgres
-    tag: 16-alpine
+    tag: 16.14-bookworm
     pullPolicy: IfNotPresent
   service:
     port: 5432
@@ -87,6 +87,9 @@ postgres:
   database: postgres
   storage:
     size: 1Gi
+    # Optional: StorageClass der Zielumgebung. Bleibt der Wert leer,
+    # greift die Standard-StorageClass (lokal: local-path von k3s).
+    className: ""
   resources:
     requests:
       cpu: 100m
@@ -107,3 +110,6 @@ containerSecurityContext:
 
 networkPolicy:
   enabled: true
+
+ingressController:
+  namespace: traefik

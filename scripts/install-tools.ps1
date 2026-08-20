@@ -1,8 +1,8 @@
 param(
-  [string]$HelmVersion = "3.15.4",
-  [string]$TerraformVersion = "1.9.5",
-  [string]$K3dVersion = "5.7.4",
-  [string]$GhVersion = "2.55.0"
+  [string]$HelmVersion = "4.2.3",
+  [string]$TerraformVersion = "1.15.8",
+  [string]$K3dVersion = "5.9.0",
+  [string]$GhVersion = "2.96.0"
 )
 
 $ErrorActionPreference = "Stop"

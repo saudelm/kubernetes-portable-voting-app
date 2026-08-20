@@ -17,9 +17,9 @@ variable "app_namespace" {
 }
 
 variable "ingress_namespace" {
-  description = "Namespace for ingress-nginx."
+  description = "Namespace for the Traefik ingress controller."
   type        = string
-  default     = "ingress-nginx"
+  default     = "traefik"
 }
 
 variable "monitoring_namespace" {

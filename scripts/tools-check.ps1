@@ -32,6 +32,17 @@ Test-Tool -Name terraform -Arguments @("version")
 Test-Tool -Name k3d -Arguments @("version")
 Test-Tool -Name gh -Arguments @("--version")
 Test-Tool -Name docker -Arguments @("version")
+Test-Tool -Name python -Arguments @("--version")
+Test-Tool -Name ruby -Arguments @("--version")
+Test-Tool -Name node -Arguments @("--version")
+Test-Tool -Name npm -Arguments @("--version")
+
+if (Get-Command gcloud -ErrorAction SilentlyContinue) {
+  Write-Host "[ok] gcloud -> $((Get-Command gcloud).Source)"
+  gcloud version
+} else {
+  Write-Host "[optional] gcloud is required only for the GKE experiment."
+}
 
 Write-Host ""
 Write-Host "Checking Docker daemon..."

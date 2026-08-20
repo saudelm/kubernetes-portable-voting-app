@@ -1,4 +1,4 @@
-FROM node:18-slim
+FROM node:24.18.0-slim
 
 # add curl for healthcheck
 RUN apt-get update && \
@@ -9,12 +9,9 @@ RUN apt-get update && \
 
 WORKDIR /usr/local/app
 
-# have nodemon available for local dev use (file watching)
-RUN npm install -g nodemon
-
 COPY package*.json ./
 
-RUN npm ci && \
+RUN npm ci --omit=dev && \
  npm cache clean --force
 
 COPY --chown=app:app . .

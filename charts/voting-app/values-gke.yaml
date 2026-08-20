@@ -1,0 +1,50 @@
+# Zielumgebung: Google Kubernetes Engine (GKE)
+# Verwendung: wird von infra/gke als Values-Datei geladen.
+#
+# Hinweise:
+# - Terraform reserviert die externe IP und setzt die nip.io-Hosts in einem
+#   Durchlauf. Die Platzhalter unten werden durch Terraform ueberschrieben.
+# - Der Commit-SHA-Tag wird als Pflichtvariable image_tag uebergeben.
+# - Sind die GHCR-Pakete privat, imagePullSecrets setzen oder die Pakete
+#   auf "public" stellen.
+
+imagePullSecrets: []
+
+vote:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/saudelm/kubernetes-portable-voting-app/vote
+    tag: SET_BY_TERRAFORM
+    pullPolicy: IfNotPresent
+  ingress:
+    enabled: true
+    className: traefik
+    host: SET_BY_TERRAFORM
+
+result:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/saudelm/kubernetes-portable-voting-app/result
+    tag: SET_BY_TERRAFORM
+    pullPolicy: IfNotPresent
+  ingress:
+    enabled: true
+    className: traefik
+    host: SET_BY_TERRAFORM
+
+worker:
+  image:
+    repository: ghcr.io/saudelm/kubernetes-portable-voting-app/worker
+    tag: SET_BY_TERRAFORM
+    pullPolicy: IfNotPresent
+
+postgres:
+  storage:
+    size: 1Gi
+    className: standard-rwo
+
+networkPolicy:
+  enabled: true
+
+ingressController:
+  namespace: traefik

@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, make_response, g
 from redis import Redis
 import os
 import socket
-import random
+import secrets
 import json
 import logging
 
@@ -27,17 +27,27 @@ def get_redis():
 def healthz():
     return "ok", 200
 
+@app.route("/readyz")
+def readyz():
+    try:
+        get_redis().ping()
+    except Exception:
+        return "redis unavailable", 503
+    return "ready", 200
+
 @app.route("/", methods=['POST','GET'])
 def hello():
     voter_id = request.cookies.get('voter_id')
     if not voter_id:
-        voter_id = hex(random.getrandbits(64))[2:-1]
+        voter_id = secrets.token_hex(16)
 
     vote = None
 
     if request.method == 'POST':
         redis = get_redis()
-        vote = request.form['vote']
+        vote = request.form.get('vote')
+        if vote not in {'a', 'b'}:
+            return "invalid vote", 400
         app.logger.info('Received vote for %s', vote)
         data = json.dumps({'voter_id': voter_id, 'vote': vote})
         redis.rpush('votes', data)
@@ -49,7 +59,7 @@ def hello():
         hostname=hostname,
         vote=vote,
     ))
-    resp.set_cookie('voter_id', voter_id)
+    resp.set_cookie('voter_id', voter_id, httponly=True, samesite='Lax')
     return resp
 
 

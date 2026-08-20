@@ -564,6 +564,15 @@ resource "google_container_node_pool" "default" {
   }
 }
 
+data "kubernetes_config_map_v1" "gke_dataplane_v2" {
+  metadata {
+    name      = "cilium-config"
+    namespace = "kube-system"
+  }
+
+  depends_on = [google_container_node_pool.default]
+}
+
 resource "kubernetes_namespace_v1" "traefik" {
   metadata {
     name = var.ingress_namespace
@@ -593,6 +602,32 @@ resource "kubernetes_namespace_v1" "app" {
   }
 
   depends_on = [google_container_node_pool.default]
+}
+
+resource "terraform_data" "ghcr_pull_secret" {
+  triggers_replace = [
+    var.project_id,
+    var.location,
+    var.cluster_name,
+    var.app_namespace,
+    var.ghcr_username,
+    var.image_pull_secret_name
+  ]
+
+  provisioner "local-exec" {
+    command = "\"${path.module}/../../scripts/create-ghcr-pull-secret.sh\""
+
+    environment = {
+      PROJECT_ID    = var.project_id
+      GKE_LOCATION  = var.location
+      CLUSTER_NAME  = var.cluster_name
+      NAMESPACE     = var.app_namespace
+      GHCR_USERNAME = var.ghcr_username
+      SECRET_NAME   = var.image_pull_secret_name
+    }
+  }
+
+  depends_on = [kubernetes_namespace_v1.app]
 }
 
 resource "helm_release" "traefik" {
@@ -657,6 +692,11 @@ resource "helm_release" "voting_app" {
   values = [
     file("${path.module}/../../charts/voting-app/values-gke.yaml"),
     yamlencode({
+      imagePullSecrets = [
+        {
+          name = var.image_pull_secret_name
+        }
+      ]
       vote = {
         image = {
           repository = "${var.image_repository_base}/vote"
@@ -686,6 +726,12 @@ resource "helm_release" "voting_app" {
       postgres = {
         password = var.postgres_password
       }
+      networkPolicy = {
+        allowNodeLocalDns = true
+        healthProbeCidrs = [
+          format("%s/32", data.kubernetes_config_map_v1.gke_dataplane_v2.data["local-router-ipv4"])
+        ]
+      }
       ingressController = {
         namespace = var.ingress_namespace
       }
@@ -694,7 +740,7 @@ resource "helm_release" "voting_app" {
 
   depends_on = [
     helm_release.traefik,
-    kubernetes_namespace_v1.app
+    terraform_data.ghcr_pull_secret
   ]
 }
 

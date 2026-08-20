@@ -1,4 +1,5 @@
-const socket = io();
+// A direct WebSocket avoids polling sessions being split across result replicas.
+const socket = io({ transports: ['websocket'] });
 const bg1 = document.getElementById('background-stats-1');
 const bg2 = document.getElementById('background-stats-2');
 const aPercent = document.getElementById('a-percent');

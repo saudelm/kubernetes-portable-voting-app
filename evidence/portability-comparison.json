@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-08-20T09:25:10Z",
+  "generated_at_utc": "2026-08-20T10:46:46Z",
   "method": "Static comparison of Helm-rendered Kubernetes manifests; no runtime result.",
   "metrics": {
     "local_object_count": 35,
@@ -7,9 +7,9 @@
     "shared_object_count": 35,
     "shared_object_ratio": 1.0,
     "same_leaf_value_count": 602,
-    "compared_leaf_slot_count": 610,
-    "leaf_value_reuse_ratio": 0.986885,
-    "expected_difference_count": 8,
+    "compared_leaf_slot_count": 613,
+    "leaf_value_reuse_ratio": 0.982055,
+    "expected_difference_count": 11,
     "unexpected_difference_count": 0
   },
   "objects_only_local": [
@@ -73,6 +73,30 @@
       "local": "result.127.0.0.1.nip.io",
       "gke": "result.192.0.2.1.nip.io",
       "category": "external_hostname",
+      "expected": true
+    },
+    {
+      "object": "NetworkPolicy/voting/voting-voting-app-allow-dns",
+      "path": "spec.egress[0].to[1].namespaceSelector.matchLabels.kubernetes.io/metadata.name",
+      "local": "<absent>",
+      "gke": "kube-system",
+      "category": "platform_networking",
+      "expected": true
+    },
+    {
+      "object": "NetworkPolicy/voting/voting-voting-app-allow-dns",
+      "path": "spec.egress[0].to[1].podSelector.matchLabels.k8s-app",
+      "local": "<absent>",
+      "gke": "node-local-dns",
+      "category": "platform_networking",
+      "expected": true
+    },
+    {
+      "object": "NetworkPolicy/voting/voting-voting-app-allow-ingress-to-web",
+      "path": "spec.ingress[0].from[1].ipBlock.cidr",
+      "local": "<absent>",
+      "gke": "169.254.4.6/32",
+      "category": "platform_networking",
       "expected": true
     },
     {

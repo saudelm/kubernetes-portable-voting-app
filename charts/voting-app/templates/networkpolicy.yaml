@@ -29,6 +29,14 @@ spec:
           podSelector:
             matchLabels:
               k8s-app: kube-dns
+        {{- if .Values.networkPolicy.allowNodeLocalDns }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: node-local-dns
+        {{- end }}
       ports:
         - protocol: UDP
           port: 53
@@ -56,6 +64,10 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: {{ .Values.ingressController.namespace }}
+        {{- range .Values.networkPolicy.healthProbeCidrs }}
+        - ipBlock:
+            cidr: {{ . | quote }}
+        {{- end }}
       ports:
         - protocol: TCP
           port: 8080

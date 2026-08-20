@@ -45,6 +45,9 @@ postgres:
 
 networkPolicy:
   enabled: true
+  allowNodeLocalDns: true
+  # Terraform reads the Dataplane V2 router IP from the GKE cluster.
+  healthProbeCidrs: []
 
 ingressController:
   namespace: traefik

@@ -110,6 +110,8 @@ containerSecurityContext:
 
 networkPolicy:
   enabled: true
+  allowNodeLocalDns: false
+  healthProbeCidrs: []
 
 ingressController:
   namespace: traefik

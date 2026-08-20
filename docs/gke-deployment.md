@@ -19,7 +19,7 @@ Keine Kennwoerter, Service-Account-Schluessel, Terraform-States oder `tfplan`-Da
 1. Eigenes Google-Cloud-Projekt mit aktivierter Abrechnung und ausreichenden Rechten fuer Service Usage, Compute Engine und GKE.
 2. Installierte Werkzeuge: `gcloud`, `terraform >= 1.6`, `kubectl`, `helm`, `git`, `curl` und `openssl`. Der dokumentierte CI-Stand verwendet Terraform 1.15.8 und Helm 4.2.3.
 3. Drei ueber GitHub Actions gebaute GHCR-Images mit demselben Commit-SHA-Tag.
-4. GHCR-Pakete sind fuer das Experiment oeffentlich. Alternativ muss vorab ein `imagePullSecret` konzipiert und in den Values referenziert werden.
+4. GitHub CLI ist mit `read:packages` angemeldet. Terraform erzeugt daraus im Cluster ein `imagePullSecret`, ohne den Token in Git oder im Terraform-State zu speichern.
 5. Genuegend regionale Quote fuer zwei `e2-standard-2`-Knoten und eine externe Load-Balancer-IP.
 
 Offizielle Installationsanleitung fuer die CLI: [Google Cloud CLI installieren](https://cloud.google.com/sdk/docs/install).
@@ -33,6 +33,7 @@ export PROJECT_ID="DEIN-EINDEUTIGES-PROJEKT"
 export GKE_LOCATION="europe-west3-a"
 export IMAGE_TAG="VOLLSTAENDIGER_GITHUB_COMMIT_SHA"
 export TF_VAR_image_repository_base="ghcr.io/DEIN-GITHUB-NAME/DEIN-REPOSITORY"
+export TF_VAR_ghcr_username="DEIN-GITHUB-NAME"
 export TF_VAR_postgres_password="$(openssl rand -base64 24)"
 export TF_VAR_grafana_admin_password="$(openssl rand -base64 24)"
 ```
@@ -55,9 +56,12 @@ gcloud auth application-default login
 gcloud config set project "$PROJECT_ID"
 gcloud auth application-default set-quota-project "$PROJECT_ID"
 gcloud projects describe "$PROJECT_ID"
+gh auth status
 ```
 
 Terraform aktiviert `compute.googleapis.com` und `container.googleapis.com`. Fehlen dafuer Rechte oder ist keine Abrechnung verknuepft, bricht der Plan kontrolliert ab.
+Fuer private GHCR-Pakete muss der GitHub-Login den Scope `read:packages` besitzen. Das Hilfsskript liest den Token nur zur Laufzeit und uebergibt ihn direkt an Kubernetes.
+Bei GKE Dataplane V2 liest Terraform die lokale Router-IP aus der verwalteten `cilium-config` und erlaubt sie ausschliesslich als `/32` fuer HTTP-Probes. Fuer DNS wird neben `kube-dns` auch der GKE-spezifische Pod-Selektor `node-local-dns` freigegeben. Beide Regeln bleiben auf die benoetigten Ports beschraenkt.
 
 ## 5. Vorpruefung und statischer Vergleich
 
@@ -101,7 +105,7 @@ terraform -chdir=infra/gke apply tfplan
 date -Iseconds
 ```
 
-Terraform reserviert die externe IP vorab, weist sie Traefik zu und erzeugt daraus die drei nip.io-Hosts. Deshalb ist kein manueller zweiter Apply zur Ersetzung eines `<LB_IP>`-Platzhalters vorgesehen.
+Terraform reserviert die externe IP vorab, weist sie Traefik zu und erzeugt daraus die drei nip.io-Hosts. Vor dem Start der Anwendung erzeugt `scripts/create-ghcr-pull-secret.sh` den privaten GHCR-Lesezugriff im Namespace `voting`. Deshalb ist kein manueller zweiter Apply und kein oeffentliches Container-Paket erforderlich.
 
 Folgende Werte sichern, ohne Kennwoerter abzubilden:
 

@@ -50,6 +50,8 @@ def category(path)
   return "image_reference" if path.include?(".spec.template.spec.containers[") && path.end_with?(".image")
   return "external_hostname" if path.include?(".spec.rules[") && path.end_with?(".host")
   return "storage_class" if path.include?(".volumeClaimTemplates[") && path.end_with?(".storageClassName")
+  return "platform_networking" if path.start_with?("NetworkPolicy/voting/voting-voting-app-allow-dns.") ||
+                                  path.start_with?("NetworkPolicy/voting/voting-voting-app-allow-ingress-to-web.")
 
   nil
 end
@@ -152,7 +154,7 @@ def markdown(report)
     "",
     "## Interpretation",
     "",
-    "Die Objektidentitaeten muessen vollstaendig uebereinstimmen. Abweichungen sind nur fuer Replikate, Image-Referenzen, externe Hostnamen und die StorageClass vorgesehen. Ein Laufzeitnachweis fuer K3d und GKE wird getrennt erhoben.",
+    "Die Objektidentitaeten muessen vollstaendig uebereinstimmen. Abweichungen sind nur fuer Replikate, Image-Referenzen, externe Hostnamen, die StorageClass und explizite Plattform-Netzwerkregeln vorgesehen. Ein Laufzeitnachweis fuer K3d und GKE wird getrennt erhoben.",
     ""
   ])
   lines.join("\n")
@@ -163,7 +165,9 @@ gke_overrides = [
   "result.image.tag=abcdef1",
   "worker.image.tag=abcdef1",
   "vote.ingress.host=vote.192.0.2.1.nip.io",
-  "result.ingress.host=result.192.0.2.1.nip.io"
+  "result.ingress.host=result.192.0.2.1.nip.io",
+  "networkPolicy.allowNodeLocalDns=true",
+  "networkPolicy.healthProbeCidrs[0]=169.254.4.6/32"
 ]
 
 report = compare(

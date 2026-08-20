@@ -93,3 +93,25 @@ variable "image_repository_base" {
     error_message = "image_repository_base muss die Form ghcr.io/owner/repository haben."
   }
 }
+
+variable "ghcr_username" {
+  description = "GitHub-Benutzername fuer den privaten GHCR-Lesezugriff."
+  type        = string
+  default     = "saudelm"
+
+  validation {
+    condition     = can(regex("^[A-Za-z0-9-]+$", var.ghcr_username))
+    error_message = "ghcr_username darf nur Buchstaben, Zahlen und Bindestriche enthalten."
+  }
+}
+
+variable "image_pull_secret_name" {
+  description = "Name des ausserhalb des Terraform-States erzeugten GHCR-Pull-Secrets."
+  type        = string
+  default     = "ghcr-pull"
+
+  validation {
+    condition     = can(regex("^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", var.image_pull_secret_name))
+    error_message = "image_pull_secret_name muss ein gueltiger Kubernetes-Name sein."
+  }
+}

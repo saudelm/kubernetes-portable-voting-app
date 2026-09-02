@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-08-20T10:46:46Z",
+  "generated_at_utc": "2026-09-02T14:30:57Z",
   "method": "Static comparison of Helm-rendered Kubernetes manifests; no runtime result.",
   "metrics": {
     "local_object_count": 35,
@@ -12,12 +12,8 @@
     "expected_difference_count": 11,
     "unexpected_difference_count": 0
   },
-  "objects_only_local": [
-
-  ],
-  "objects_only_gke": [
-
-  ],
+  "objects_only_local": [],
+  "objects_only_gke": [],
   "differences": [
     {
       "object": "Deployment/voting/voting-voting-app-result",

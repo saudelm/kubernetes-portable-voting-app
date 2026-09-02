@@ -2,6 +2,7 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ruby_bin="${RUBY_BIN:-ruby}"
 
 helm lint "$root/charts/voting-app"
 helm template voting "$root/charts/voting-app" \
@@ -28,8 +29,8 @@ python3 -m venv "$python_venv"
 "$python_venv/bin/python" -m py_compile "$root/vote/app.py"
 PYTHONPATH="$root/vote" "$python_venv/bin/python" -m unittest discover \
   -s "$root/vote/tests" -p 'test_*.py'
-ruby -c "$root/scripts/compare-portability.rb"
-ruby "$root/scripts/compare-portability.rb"
+"$ruby_bin" -c "$root/scripts/compare-portability.rb"
+"$ruby_bin" "$root/scripts/compare-portability.rb"
 
 (
   cd "$root/result"

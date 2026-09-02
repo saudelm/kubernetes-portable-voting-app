@@ -1,6 +1,6 @@
 # Statische Portabilitaetsanalyse
 
-Erzeugt (UTC): `2026-08-20T10:46:46Z`
+Erzeugt (UTC): `2026-09-02T14:30:57Z`
 
 > Diese Auswertung vergleicht gerenderte Manifeste. Sie ist kein Nachweis einer erfolgreichen Laufzeitbereitstellung.
 

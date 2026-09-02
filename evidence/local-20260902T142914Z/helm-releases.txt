@@ -1,0 +1,5 @@
+NAME      	NAMESPACE 	REVISION	UPDATED                              	STATUS  	CHART            	APP VERSION
+grafana   	monitoring	1       	2026-09-02 16:28:10.569665 +0200 CEST	deployed	grafana-10.5.15  	12.3.1     
+prometheus	monitoring	1       	2026-09-02 16:27:10.3933 +0200 CEST  	deployed	prometheus-29.6.0	v3.11.3    
+traefik   	traefik   	1       	2026-09-02 16:27:08.469179 +0200 CEST	deployed	traefik-41.0.2   	v3.7.6     
+voting    	voting    	1       	2026-09-02 16:27:26.41912 +0200 CEST 	deployed	voting-app-0.1.0 	1.0.0      

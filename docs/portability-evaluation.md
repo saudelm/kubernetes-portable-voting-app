@@ -27,11 +27,11 @@ Statische Ergebnisse duerfen nicht als erfolgreiche Cloud-Bereitstellung bezeich
 
 - 35 lokale und 35 GKE-Objekte,
 - 35 gemeinsame Objektidentitaeten und damit 100 % Objektwiederverwendung,
-- 98,69 % gleiche Blattwerte,
-- acht erwartete Unterschiede,
+- 602 von 613 beziehungsweise 98,21 % gleiche Blattwerte,
+- elf erwartete Unterschiede in fuenf Kategorien,
 - keine unerwartete Abweichung.
 
-Die acht Unterschiede sind drei Image-Referenzen, zwei Replikatzahlen, zwei externe Hostnamen und eine StorageClass. Die Werte belegen eine weitgehende Wiederverwendung der Anwendungsmanifeste, nicht die vollstaendige Infrastrukturunabhaengigkeit.
+Die elf Unterschiede sind drei Image-Referenzen, zwei Replikatzahlen, zwei externe Hostnamen, drei Plattform-Netzwerkwerte und eine StorageClass. Die Werte belegen eine weitgehende Wiederverwendung der Anwendungsmanifeste, nicht die vollstaendige Infrastrukturunabhaengigkeit.
 
 ## Laufzeittests
 
@@ -43,6 +43,8 @@ Die acht Unterschiede sind drei Image-Referenzen, zwei Replikatzahlen, zwei exte
 | T4 Netzisolation | Policy-Wirkung | Vote erreicht Redis, aber nicht PostgreSQL |
 
 Die Befehle und Nachweisfelder stehen in `docs/gke-deployment.md` und `docs/gke-ergebnisse-VORLAGE.md`.
+
+Der reale GKE-Lauf vom 20.08.2026 und der finale lokale Lauf vom 02.09.2026 bestanden jeweils T1 bis T4. Ihre Nachweise liegen unter `evidence/gke-20260820T105218Z/` und `evidence/local-20260902T142914Z/`. K4 und K5 sind damit fuer die definierten Testszenarien in beiden Zielumgebungen erfuellt. Daraus folgt kein Nachweis fuer Hochverfuegbarkeit, Backup, Lastfestigkeit oder beliebige andere Anwendungen.
 
 ## Umgebungsbindung
 

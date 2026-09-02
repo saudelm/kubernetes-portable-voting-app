@@ -2,7 +2,7 @@
 
 Dieser Prototyp untersucht Kubernetes als Grundlage einer portierbaren, containerzentrierten Managementumgebung. Dieselbe Anwendung und dasselbe Helm-Chart werden lokal auf K3d/K3s und in Google Kubernetes Engine (GKE) eingesetzt. Terraform verwaltet die plattformspezifische Infrastruktur und die gemeinsamen Add-ons.
 
-Der Prototyp ist ein Demonstrator fuer eine Bachelorarbeit. Er ist keine produktionsreife Plattform und ersetzt keine Messung in den beiden Zielumgebungen.
+Der Prototyp ist ein Demonstrator fuer eine Bachelorarbeit und keine produktionsreife Plattform. Der GKE-Lauf wurde am 20.08.2026 und der finale lokale Lauf am 02.09.2026 real durchgefuehrt und dokumentiert. In beiden Umgebungen wurden die Testfaelle T1 bis T4 bestanden.
 
 ## Architektur
 
@@ -14,8 +14,6 @@ Der Prototyp ist ein Demonstrator fuer eine Bachelorarbeit. Er ist keine produkt
 - Beobachtbarkeit: Prometheus und Grafana
 - Sicherheitsbasis: Pod Security Admission, Non-Root-Container, minimale ServiceAccounts/RBAC-Rechte und NetworkPolicies
 - Persistenz: PostgreSQL als StatefulSet mit PVC
-
-Die Ingress-API ist stabil, wird von Kubernetes jedoch nicht mehr erweitert. Eine Migration auf Gateway API ist deshalb als Weiterentwicklung dokumentiert. `ingress-nginx` wird nicht eingesetzt, da das Projekt seit Maerz 2026 eingestellt ist.
 
 ## Anwendung
 
@@ -40,20 +38,27 @@ und die beiden Terraform-Module bereitgestellt.
 Docker Desktop starten und im Projektverzeichnis ausfuehren:
 
 ```bash
-make tools-check
-make local
-```
-
-Der kombinierte Lauf erzeugt den Cluster, baut und importiert die drei Images, initialisiert Terraform, installiert die Releases und zeigt Pods sowie URLs. Die Einzelschritte lauten:
-
-```bash
+./scripts/tools-check.sh
 ./scripts/cluster-up.sh
 ./scripts/build-local.sh
 ./scripts/tf-init.sh
 ./scripts/tf-apply.sh
+```
+
+Die Schritte erzeugen den Cluster, bauen und importieren die drei Images, initialisieren Terraform und installieren die Releases. Status und URLs zeigt:
+
+```bash
 ./scripts/pods.sh
 ./scripts/urls.sh
 ```
+
+`kubectl` sollte dieselbe Minor-Version wie der Cluster oder hoechstens eine benachbarte Version verwenden. Der dokumentierte Lauf nutzte Client `1.35.8` und Server `1.35.4+k3s1`. Auf dem verwendeten Apple-Silicon-Mac wurde der passende Client so vor den alten Client gesetzt:
+
+```bash
+export PATH="/opt/homebrew/opt/kubernetes-cli@1.35/bin:$PATH"
+```
+
+`make local` bleibt als Kurzform verfuegbar, sofern GNU Make installiert ist.
 
 Lokale Endpunkte:
 
@@ -102,24 +107,30 @@ Die erzeugten Nachweise liegen unter:
 - `evidence/portability-comparison.json`
 - `evidence/portability-comparison.md`
 
-Aktueller statischer Befund: 35 von 35 Objektidentitaeten werden wiederverwendet; 98,69 % der verglichenen Blattwerte sind gleich. Die acht Unterschiede betreffen ausschliesslich Image-Referenzen, Replikate, externe Hostnamen und StorageClass. Das ist kein Laufzeitnachweis.
+Aktueller statischer Befund: 35 von 35 Objektidentitaeten werden wiederverwendet; 602 von 613 Blattwerten beziehungsweise 98,21 % sind gleich. Die elf erwarteten Unterschiede betreffen drei Image-Referenzen, zwei Replikatzahlen, zwei externe Hostnamen, drei Plattform-Netzwerkwerte und eine StorageClass. Unerwartete Unterschiede gibt es nicht. Dieser Vergleich ist getrennt von der Laufzeitevidenz zu lesen.
 
 ## Laufzeitnachweise
 
-Nach einer echten Bereitstellung werden maschinenlesbare Nachweise gesammelt:
+Der vollstaendige lokale Prueflauf fuehrt T1 bis T4 aus und sammelt die maschinenlesbaren Nachweise automatisch:
+
+```bash
+./scripts/run-local-evidence.sh
+```
+
+Die einfachere Zustandsaufnahme und die GKE-Variante bleiben getrennt verfuegbar:
 
 ```bash
 ./scripts/collect-evidence.sh local
 ./scripts/collect-evidence.sh gke
 ```
 
-Die Ausgabe wird zeitgestempelt unter `evidence/` abgelegt. Screenshots werden zusaetzlich nach der Checkliste in `docs/gke-ergebnisse-VORLAGE.md` erstellt.
+Die Ausgabe wird zeitgestempelt unter `evidence/` abgelegt. Der finale lokale Nachweis liegt unter `evidence/local-20260902T142914Z/`; der reale GKE-Nachweis unter `evidence/gke-20260820T105218Z/`. Beide enthalten Cluster-, Knoten-, Workload- und Testdaten. Zusaetzlich enthaelt der lokale Ordner das statische Gesamtpruefprotokoll und Bildschirmaufnahmen, der GKE-Ordner den vollstaendigen Abbaunachweis. `docs/gke-ergebnisse-VORLAGE.md` bleibt als Checkliste fuer einen Wiederholungslauf erhalten.
 
 ## GKE
 
 Die vollstaendige Anleitung befindet sich in `docs/gke-deployment.md`. Terraform reserviert vorab eine regionale IP und leitet daraus die nip.io-Hostnamen ab. Dadurch genuegt ein geplanter Terraform-Durchlauf; eine manuelle Aenderung von Helm-Werten zwischen zwei Laeufen ist nicht erforderlich.
 
-Fuer GKE sind ein unveraenderlicher Commit-SHA als `image_tag` sowie sichere PostgreSQL- und Grafana-Kennwoerter Pflicht. Nach dem Versuch muss die Umgebung mit `terraform destroy` abgebaut werden, weil Cluster, Compute, Load Balancer und Persistent Disk Kosten verursachen.
+Fuer GKE sind ein unveraenderlicher Commit-SHA als `image_tag` sowie sichere PostgreSQL- und Grafana-Kennwoerter Pflicht. Der dokumentierte Versuch nutzte den Commit `82cde44a838d36f07cc47d9f29351d039cdf0244`; danach wurden die Cloud-Ressourcen mit `terraform destroy` entfernt und der leere Zielzustand unabhaengig kontrolliert.
 
 ## Grenzen
 
@@ -138,4 +149,3 @@ Weitere Dokumente:
 - `docs/local-deployment.md`
 - `docs/gke-deployment.md`
 - `docs/gke-ergebnisse-VORLAGE.md`
-- `docs/gitops.md`

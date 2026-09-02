@@ -33,7 +33,7 @@ portability:
 	ruby scripts/compare-portability.rb
 
 evidence:
-	./scripts/collect-evidence.sh local
+	./scripts/run-local-evidence.sh
 
 install-tools-ps:
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-tools.ps1

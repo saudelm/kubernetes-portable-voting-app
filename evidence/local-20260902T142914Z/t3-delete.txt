@@ -1,0 +1,1 @@
+pod "voting-voting-app-vote-657598fdd6-kdf74" deleted from voting namespace

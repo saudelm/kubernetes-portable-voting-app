@@ -1,0 +1,1 @@
+pod "voting-voting-app-postgres-0" deleted from voting namespace

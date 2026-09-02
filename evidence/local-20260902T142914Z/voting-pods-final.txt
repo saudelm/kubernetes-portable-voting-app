@@ -1,0 +1,6 @@
+NAME                                        READY   STATUS    RESTARTS      AGE     IP          NODE                          NOMINATED NODE   READINESS GATES
+voting-voting-app-postgres-0                1/1     Running   0             31s     10.42.1.9   k3d-portable-voting-agent-0   <none>           <none>
+voting-voting-app-redis-568f6f7d86-qfq6h    1/1     Running   0             2m25s   10.42.1.6   k3d-portable-voting-agent-0   <none>           <none>
+voting-voting-app-result-5f64bbb6b6-6qgfp   1/1     Running   1 (32s ago)   2m25s   10.42.2.6   k3d-portable-voting-agent-1   <none>           <none>
+voting-voting-app-vote-657598fdd6-v4t6m     1/1     Running   0             16s     10.42.2.7   k3d-portable-voting-agent-1   <none>           <none>
+voting-voting-app-worker-74f597f76f-r4c5m   1/1     Running   1 (32s ago)   2m25s   10.42.2.4   k3d-portable-voting-agent-1   <none>           <none>

@@ -21,6 +21,7 @@ Der Prototyp demonstriert eine portierbare Managementumgebung fuer eine kleine M
 - Der K3d-Load-Balancer bildet HTTP auf Host-Port `8080` und HTTPS auf `8443` ab.
 - Lokale Images werden in den Cluster importiert und tragen den Tag `local`.
 - Fuer PostgreSQL greift die Standard-StorageClass des Clusters.
+- Vote und Result laufen mit je einem Pod als ressourcenschonende lokale Funktionsreferenz.
 
 ## GKE-Umgebung
 
@@ -31,6 +32,7 @@ Der Prototyp demonstriert eine portierbare Managementumgebung fuer eine kleine M
 - Traefik erhaelt diese IP als `loadBalancerIP`; Vote-, Result- und Grafana-Hosts werden daraus abgeleitet.
 - Die Anwendung verwendet unveraenderliche GHCR-Images mit demselben Commit-SHA.
 - PostgreSQL verwendet die GKE-StorageClass `standard-rwo`.
+- Vote und Result laufen mit je zwei Pods, um Verteilung und Wiederherstellung des Sollzustands zu pruefen; die uebrigen Komponenten bleiben einfach ausgefuehrt.
 
 ## Anwendungspfad
 
@@ -50,9 +52,11 @@ Der Prototyp demonstriert eine portierbare Managementumgebung fuer eine kleine M
 
 ## Bewusste Grenzen
 
-Die stabile Ingress-API bleibt fuer den abgegrenzten Prototyp erhalten. Kubernetes entwickelt diese API nicht mehr funktional weiter; Gateway API ist die vorgesehene Weiterentwicklung. Ein Wechsel wuerde zusaetzliche CRDs und einen breiteren Evaluationsumfang erfordern und wird deshalb als Folgeschritt behandelt.
+Der Prototyp untersucht ausschliesslich hostbasiertes HTTP-Routing ueber die Kubernetes-Ingress-API und Traefik. Produktives DNS und TLS sind nicht Bestandteil der Evaluation.
 
 Stateful Portability ist nur teilweise erreicht. Das gemeinsame StatefulSet ist portierbar, das Persistenzmedium und ein belastbarer Migrationsweg sind es nicht automatisch. Der Prototyp enthaelt weder Hochverfuegbarkeit noch Backup/Restore zwischen Clustern.
+
+Die zwei Web-Replikate in GKE belegen daher keine vollstaendige Hochverfuegbarkeit: Es gibt keine garantierte Verteilung auf unterschiedliche Knoten, und PostgreSQL bleibt eine einzelne Instanz.
 
 Redis ist bewusst nur eine fluechtige Warteschlange mit `emptyDir`. PostgreSQL ist
 das System of Record; noch nicht durch den Worker verarbeitete Stimmen koennen bei

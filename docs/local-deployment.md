@@ -9,11 +9,17 @@ fuer eine reale Unternehmensinfrastruktur.
 Docker Desktop starten und im Projektstamm ausfuehren:
 
 ```bash
-make tools-check
-make validate
-make local
+./scripts/tools-check.sh
+./scripts/validate.sh
+./scripts/cluster-up.sh
+./scripts/build-local.sh
+./scripts/tf-init.sh
+./scripts/tf-apply.sh
 kubectl get pods -n voting -o wide
 ```
+
+Der `kubectl`-Client soll zur Server-Minor-Version passen. Fuer den dokumentierten
+Lauf wurden `kubectl 1.35.8` und `k3s 1.35.4` verwendet.
 
 Erwartung: je ein Ready-Pod fuer Vote, Result, Worker und Redis sowie
 `voting-voting-app-postgres-0`. Die lokalen URLs zeigt `make urls`.
@@ -106,10 +112,11 @@ Erfolg: Redis ist erreichbar, PostgreSQL aus dem Vote-Pod nicht.
 ## 6. Nachweise sichern
 
 ```bash
-./scripts/collect-evidence.sh local
+./scripts/run-local-evidence.sh
 ```
 
-Zusaetzlich die Dateien aus `evidence/manual-local/`, die Screenshots, das Datum,
-die Zeitzone, den Commit-SHA und alle Abweichungen in die Ergebnisvorlage eintragen.
-Fehlgeschlagene Tests nicht loeschen, sondern Ursache, Korrektur und Wiederholung
-dokumentieren.
+Das Skript fuehrt T1 bis T4 aus, prueft die Erfolgskriterien und speichert Toolversionen,
+Datum, Zeitzone, Commit-SHA, Clusterzustand und Testausgaben in einem gemeinsamen
+zeitgestempelten Ordner. Der finale Lauf liegt unter
+`evidence/local-20260902T142914Z/`. Fehlgeschlagene Tests nicht loeschen, sondern
+Ursache, Korrektur und Wiederholung dokumentieren.

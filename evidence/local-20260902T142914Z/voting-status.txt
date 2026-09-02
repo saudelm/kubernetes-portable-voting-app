@@ -1,0 +1,82 @@
+NAME: voting
+LAST DEPLOYED: Wed Sep  2 16:27:26 2026
+NAMESPACE: voting
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+RESOURCES:
+==> v1/Pod(related)
+NAME                                       READY   STATUS    RESTARTS   AGE
+voting-voting-app-redis-568f6f7d86-qfq6h   1/1     Running   0          108s
+voting-voting-app-result-5f64bbb6b6-6qgfp   1/1   Running   0     108s
+voting-voting-app-vote-657598fdd6-kdf74   1/1   Running   0     108s
+voting-voting-app-worker-74f597f76f-r4c5m   1/1   Running   0     108s
+voting-voting-app-postgres-0   1/1   Running   0     108s
+
+==> v1/ServiceAccount
+NAME                     AGE
+voting-voting-app-vote   109s
+voting-voting-app-result   109s
+voting-voting-app-worker   109s
+voting-voting-app-redis   109s
+voting-voting-app-postgres   109s
+
+==> v1/ConfigMap
+NAME                       DATA   AGE
+voting-voting-app-config   8      109s
+
+==> v1/Role
+NAME                     CREATED AT
+voting-voting-app-vote   2026-09-02T14:27:28Z
+voting-voting-app-result   2026-09-02T14:27:28Z
+voting-voting-app-worker   2026-09-02T14:27:28Z
+voting-voting-app-redis   2026-09-02T14:27:29Z
+voting-voting-app-postgres   2026-09-02T14:27:28Z
+
+==> v1/Deployment
+NAME                      READY   UP-TO-DATE   AVAILABLE   AGE
+voting-voting-app-redis   1/1     1            1           108s
+voting-voting-app-result   1/1   1     1     108s
+voting-voting-app-vote   1/1   1     1     108s
+voting-voting-app-worker   1/1   1     1     108s
+
+==> v1/StatefulSet
+NAME                         READY   AGE
+voting-voting-app-postgres   1/1     108s
+
+==> v1/Ingress
+NAME                CLASS     HOSTS                                           ADDRESS                            PORTS   AGE
+voting-voting-app   traefik   vote.127.0.0.1.nip.io,result.127.0.0.1.nip.io   172.18.0.3,172.18.0.4,172.18.0.5   80      108s
+
+==> v1/NetworkPolicy
+NAME                             POD-SELECTOR   AGE
+voting-voting-app-default-deny   <none>         109s
+voting-voting-app-allow-dns   <none>   109s
+voting-voting-app-allow-ingress-to-web   app.kubernetes.io/component in (result,vote)   109s
+voting-voting-app-allow-vote-to-redis   app.kubernetes.io/component=vote   109s
+voting-voting-app-allow-worker-to-data   app.kubernetes.io/component=worker   109s
+voting-voting-app-allow-result-to-postgres   app.kubernetes.io/component=result   109s
+voting-voting-app-allow-to-redis   app.kubernetes.io/component=redis   109s
+voting-voting-app-allow-to-postgres   app.kubernetes.io/component=postgres   109s
+
+==> v1/Secret
+NAME                         TYPE     DATA   AGE
+voting-voting-app-postgres   Opaque   1      109s
+
+==> v1/RoleBinding
+NAME                     ROLE                          AGE
+voting-voting-app-vote   Role/voting-voting-app-vote   108s
+voting-voting-app-result   Role/voting-voting-app-result   108s
+voting-voting-app-worker   Role/voting-voting-app-worker   108s
+voting-voting-app-redis   Role/voting-voting-app-redis   108s
+voting-voting-app-postgres   Role/voting-voting-app-postgres   108s
+
+==> v1/Service
+NAME                         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
+voting-voting-app-postgres   ClusterIP   None         <none>        5432/TCP   108s
+voting-voting-app-redis   ClusterIP   10.43.169.100   <none>   6379/TCP   108s
+voting-voting-app-result   ClusterIP   10.43.21.54   <none>   80/TCP   108s
+voting-voting-app-vote   ClusterIP   10.43.46.97   <none>   80/TCP   108s
+
+
+TEST SUITE: None

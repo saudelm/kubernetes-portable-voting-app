@@ -251,7 +251,13 @@ class Runner:
         for i, choice in enumerate(("a", "b", "a")):
             self.cast(f"{prefix}-{i}", choice)
             self.eventually(lambda: same_rows(self.rows(), self.expected))
-        self.cast(prefix + "-0", "b")
+        counts = {v: list(self.expected.values()).count(v) for v in ("a", "b")}
+        after = dict(counts, a=counts["a"] - 1, b=counts["b"] + 1)
+        self.command([self.a.node, str(ROOT / "scripts/check-result.cjs"), self.a.result_url,
+                      json.dumps(counts), str(self.output / f"r{run}-t1-live.png"),
+                      json.dumps({"vote_url": self.a.vote_url, "key": prefix + "-0",
+                                  "choice": "b", "after": after})], timeout=120)
+        self.expected[prefix + "-0"] = "b"
         self.verify_function(f"r{run}-t1")
 
     def storage_identity(self):
@@ -263,9 +269,7 @@ class Runner:
         before = {"rows": self.rows(), "storage": self.storage_identity(),
                   "uid": self.get("pod", self.pg)["metadata"]["uid"],
                   "applications": [p for p in self.snapshot() if p["component"] in ("result", "worker")]}
-        self.kubectl("delete", "pod", self.pg, "--wait=true", timeout=90)
-        # A vote while the database is recovering must eventually be processed.
-        self.cast("test-outage-" + uuid.uuid4().hex[:12], "a")
+        outage = self.database_outage(run)
         self.ready_component("postgres", 1)
         self.eventually(lambda: same_rows(self.rows(), self.expected))
         for component, count in (("result", 2), ("worker", 1)):
@@ -276,7 +280,7 @@ class Runner:
         for component in ("result", "worker"):
             for pod in self.pods(component):
                 self.kubectl("logs", pod["metadata"]["name"], "--since=10m", "--timestamps")
-        self.write(f"r{run}-t2.json", {"before": before, "after": after})
+        self.write(f"r{run}-t2.json", {"before": before, "after": after, "outage": outage})
         if before["storage"] != after["storage"] or before["uid"] == after["uid"]:
             raise TestFailure("Storage changed or PostgreSQL pod was not replaced")
         after_rows = {r["id"]: r["vote"] for r in after["rows"]}
@@ -286,7 +290,59 @@ class Runner:
             return sorted((p["uid"], c["containerID"], c["restarts"]) for p in items for c in p["containers"])
         if processes(before["applications"]) != processes(after["applications"]):
             raise TestFailure("Result/Worker process restarted during PostgreSQL replacement")
+        if any(self.result_readiness(p["metadata"]["name"]) != 200 for p in self.pods("result")):
+            raise TestFailure("Result did not recover readiness after database restoration")
         self.verify_function(f"r{run}-t2")
+
+    def result_readiness(self, pod):
+        # Direct loopback probe still works while an unready pod is removed from its Service.
+        script = ("require('http').get('http://127.0.0.1:4000/readyz',r=>{"
+                  "console.log(r.statusCode);r.resume()}).on('error',e=>{"
+                  "console.error(e.message);process.exitCode=1})")
+        status = int(self.kubectl("exec", pod, "--", "node", "-e", script).strip())
+        if status not in (200, 503):
+            raise ToolError("Unexpected Result readiness status: " + str(status))
+        return status
+
+    def database_outage(self, run):
+        statefulset = self.base + "-postgres"
+        spec = self.get("statefulset", statefulset)["spec"]
+        if spec["replicas"] != 1:
+            raise ToolError("Controlled outage requires exactly one PostgreSQL replica")
+        if spec.get("persistentVolumeClaimRetentionPolicy", {}).get("whenScaled", "Retain") != "Retain":
+            raise ToolError("Outage refuses a StatefulSet that deletes PVCs when scaled")
+        observations = {"started_utc": utc(), "method": "scale 1 -> 0 -> 1; same PVC", "samples": []}
+        try:
+            self.kubectl("scale", "statefulset", statefulset, "--replicas=0")
+            self.eventually(lambda: not self.pods("postgres"), 90)
+            observations["no_postgres_pods_utc"] = utc()
+            self.cast("test-outage-" + uuid.uuid4().hex[:12], "a")
+            def exposed():
+                results = self.pods("result")
+                workers = self.pods("worker")
+                if len(results) != 2 or len(workers) != 1:
+                    raise ToolError("Unexpected application replica count during outage")
+                statuses = {p["metadata"]["name"]: self.result_readiness(p["metadata"]["name"])
+                            for p in results}
+                logs = {p["metadata"]["name"]: self.kubectl("logs", p["metadata"]["name"],
+                        "--since-time=" + observations["started_utc"], "--timestamps")
+                        for p in results + workers}
+                sample = {"at": utc(), "readiness": statuses, "logs": logs}
+                observations["samples"].append(sample)
+                return (all(code == 503 for code in statuses.values())
+                        and all("Database unavailable:" in logs[p["metadata"]["name"]] for p in results)
+                        and any(marker in logs[workers[0]["metadata"]["name"]] for marker in
+                                ("Database interrupted; reconnecting:", "Database timeout; reconnecting")))
+            self.eventually(exposed, 60)
+            observations["exposure_confirmed_utc"] = utc()
+        finally:
+            # Restore the test workload even when observation or kubectl fails.
+            try:
+                self.kubectl("scale", "statefulset", statefulset, "--replicas=1")
+                observations["restore_requested_utc"] = utc()
+            finally:
+                self.write(f"r{run}-t2-outage.json", observations)
+        return observations
 
     def t3(self, run):
         before = {p["metadata"]["uid"] for p in self.pods("vote")}

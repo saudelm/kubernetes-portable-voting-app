@@ -70,7 +70,7 @@ locals {
               type = "prometheus"
               uid  = "Prometheus"
             }
-            expr         = "sum(kube_pod_status_phase{namespace=\"voting\",phase=\"Running\"})"
+            expr         = "sum(kube_pod_status_phase{namespace=\"${var.app_namespace}\",phase=\"Running\"})"
             legendFormat = "running pods"
             refId        = "A"
           }
@@ -137,7 +137,7 @@ locals {
               type = "prometheus"
               uid  = "Prometheus"
             }
-            expr         = "sum(kube_pod_container_status_restarts_total{namespace=\"voting\"})"
+            expr         = "sum(kube_pod_container_status_restarts_total{namespace=\"${var.app_namespace}\"})"
             legendFormat = "container restarts"
             refId        = "A"
           }
@@ -228,7 +228,7 @@ locals {
               type = "prometheus"
               uid  = "Prometheus"
             }
-            expr         = "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"voting\",pod!=\"\",container!=\"POD\",image!=\"\"}[5m]))"
+            expr         = "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"${var.app_namespace}\",pod!=\"\",container!=\"POD\",image!=\"\"}[5m]))"
             legendFormat = "{{pod}}"
             refId        = "A"
           }
@@ -319,7 +319,7 @@ locals {
               type = "prometheus"
               uid  = "Prometheus"
             }
-            expr         = "sum by (pod) (container_memory_working_set_bytes{namespace=\"voting\",pod!=\"\",container!=\"POD\",image!=\"\"})"
+            expr         = "sum by (pod) (container_memory_working_set_bytes{namespace=\"${var.app_namespace}\",pod!=\"\",container!=\"POD\",image!=\"\"})"
             legendFormat = "{{pod}}"
             refId        = "A"
           }
@@ -410,7 +410,7 @@ locals {
               type = "prometheus"
               uid  = "Prometheus"
             }
-            expr         = "sum by (deployment) (kube_deployment_status_replicas_available{namespace=\"voting\"})"
+            expr         = "sum by (deployment) (kube_deployment_status_replicas_available{namespace=\"${var.app_namespace}\"})"
             legendFormat = "{{deployment}}"
             refId        = "A"
           }
@@ -855,7 +855,7 @@ resource "helm_release" "grafana" {
               name      = "Prometheus"
               type      = "prometheus"
               uid       = "Prometheus"
-              url       = "http://prometheus-server.monitoring.svc.cluster.local"
+              url       = "http://prometheus-server.${var.monitoring_namespace}.svc.cluster.local"
               access    = "proxy"
               isDefault = true
             }

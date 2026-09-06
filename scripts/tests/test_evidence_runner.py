@@ -11,6 +11,49 @@ spec.loader.exec_module(m)
 
 
 class EvidenceRunnerTests(unittest.TestCase):
+    def outage_runner(self, directory):
+        args = SimpleNamespace(output=str(Path(directory) / "run"), release="test",
+                               context="k3d-voting-test-new", namespace="voting-test-new",
+                               mode="candidate", source_commit="a" * 40)
+        r = m.Runner(args)
+        r.get = Mock(return_value={"spec": {"replicas": 1}})
+        r.pods = Mock(side_effect=lambda c: [] if c == "postgres" else
+                      [{"metadata": {"name": n}} for n in
+                       (["result-1", "result-2"] if c == "result" else ["worker-1"])])
+        r.cast = Mock()
+        r.result_readiness = Mock(return_value=503)
+        r.kubectl = Mock(return_value="Database unavailable: ECONNREFUSED\nDatabase interrupted; reconnecting:")
+        def once(predicate, timeout):
+            if not predicate():
+                raise m.TestFailure("No observed database exposure")
+        r.eventually = once
+        return r
+
+    def test_outage_requires_observed_errors_and_restores_replica(self):
+        with tempfile.TemporaryDirectory() as directory:
+            r = self.outage_runner(directory)
+            data = r.database_outage(1)
+            self.assertIn("exposure_confirmed_utc", data)
+            self.assertEqual(r.cast.call_count, 1)
+            self.assertEqual(r.kubectl.call_args.args[-1], "--replicas=1")
+
+    def test_missing_exposure_never_passes_and_still_restores(self):
+        with tempfile.TemporaryDirectory() as directory:
+            r = self.outage_runner(directory)
+            r.result_readiness.return_value = 200
+            with self.assertRaises(m.TestFailure):
+                r.database_outage(1)
+            self.assertEqual(r.kubectl.call_args.args[-1], "--replicas=1")
+            self.assertTrue((r.output / "r1-t2-outage.json").exists())
+
+    def test_outage_tool_error_still_restores(self):
+        with tempfile.TemporaryDirectory() as directory:
+            r = self.outage_runner(directory)
+            r.result_readiness.side_effect = m.ToolError("exec failed")
+            with self.assertRaises(m.ToolError):
+                r.database_outage(1)
+            self.assertEqual(r.kubectl.call_args.args[-1], "--replicas=1")
+
     def test_headless_postgres_dns_is_pod_ip_not_literal_none(self):
         pod = {"metadata": {"uid": "pg-uid"}, "status": {"podIP": "10.1.2.3"}}
         slices = [{"endpoints": [{"conditions": {"ready": True}, "targetRef": {"uid": "pg-uid"},

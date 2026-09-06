@@ -191,3 +191,37 @@ schliesst B4 nicht. Erforderlich ist eine geschlossene Zuordnung:
 Bleibt ein Teil offen, bleibt er auch im Abschlussbericht offen. Historische
 Nachweise und laufende Demo werden nicht veraendert.
 
+## 10. Praezisierung der Testmethode vom 07.09.2026
+
+T1 oeffnet die Ergebnisseite vor der Stimmveraenderung. Der Browsercheck wartet
+auf Ausgangswerte, sendet dieselbe Waehlerkennung mit der anderen Option und
+verlangt neue WebSocket-Daten sowie die geaenderte Anzeige ohne Navigation.
+Danach vergleicht der Runner erneut saemtliche Datenbankzeilen.
+
+T2 ersetzt den PostgreSQL-Pod durch einen kontrollierten Zyklus des
+StatefulSets von einer auf null und zurueck auf eine Replik. Dies ist eine
+bewusste Aenderung gegenueber den historischen Pod-Loeschversuchen, keine
+nachtraegliche Neubewertung dieser Versuche. Nur die markierte Testinstallation
+darf verwendet werden; PVC-Aufbewahrung beim Skalieren muss Retain sein.
+Nach Verschwinden des Datenbank-Pods wird eine Stimme abgegeben. Beide
+Result-Pods muessen direkt ueber Loopback /readyz mit 503 antworten und
+Datenbankfehler protokollieren; auch Worker muss einen Wiederverbindungsfehler
+zeigen. Erst danach wird PostgreSQL wieder auf eine Replik gesetzt, auch bei
+einem Beobachtungsfehler. Fehler beim Wiederherstellen sind ERROR und erfordern
+manuelle Kontrolle des Testnamespaces. Anschliessend prueft T2 Daten,
+Speicherzuordnung, neue PostgreSQL-UID, unveraenderte Result-/Worker-Prozesse,
+Readiness 200 und Fachfunktion. Das ist kein Test einer Datenmigration.
+
+Die isolierten Werkzeug-Regressionen laufen mit:
+
+```sh
+python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+node --test scripts/tests/check-result.test.cjs
+```
+
+Der Browsercheck benoetigt Playwright, Chromium und installierte
+Result-Abhaengigkeiten. Bei einem vorhandenen Browser kann dessen Pfad ueber
+PLAYWRIGHT_CHROMIUM_EXECUTABLE gesetzt werden. Die Socket.IO-Testfixture
+prueft das Testwerkzeug, nicht die gesamte Anwendung und keinen Cluster.
+Die Python-Suite prueft die Monitoring-Ausdruecke mit Terraform in einem
+providerfreien temporaeren Verzeichnis unter abweichenden Namespace-Namen.

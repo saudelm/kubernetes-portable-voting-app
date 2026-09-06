@@ -23,7 +23,7 @@ class MonitoringTests(unittest.TestCase):
                 (Path(directory) / 'main.tf').write_text(config)
                 output = subprocess.check_output(['terraform', '-chdir=' + directory, 'console',
                     '-var=app_namespace=voting-test-review', '-var=monitoring_namespace=metrics-test-review'],
-                    input='jsonencode({dashboard=local.dashboard,address=local.address})\n', text=True)
+                    input='jsonencode({dashboard=local.dashboard,address=local.address})\n', text=True, timeout=30)
             data = json.loads(json.loads(output))
             queries = [q['expr'] for p in data['dashboard']['panels'] for q in p.get('targets', [])
                        if 'namespace=' in q['expr']]

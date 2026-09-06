@@ -1,0 +1,22 @@
+{
+  "grafana_admin_user": {
+    "sensitive": false,
+    "type": "string",
+    "value": "admin"
+  },
+  "grafana_url": {
+    "sensitive": false,
+    "type": "string",
+    "value": "http://grafana.127.0.0.1.nip.io:8080"
+  },
+  "result_url": {
+    "sensitive": false,
+    "type": "string",
+    "value": "http://result.127.0.0.1.nip.io:8080"
+  },
+  "vote_url": {
+    "sensitive": false,
+    "type": "string",
+    "value": "http://vote.127.0.0.1.nip.io:8080"
+  }
+}

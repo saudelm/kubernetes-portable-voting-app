@@ -1,5 +1,4 @@
 var express = require('express'),
-    async = require('async'),
     path = require('path'),
     { Pool } = require('pg'),
     app = express(),
@@ -10,7 +9,8 @@ var port = process.env.PORT || 4000;
 var postgresHost = process.env.POSTGRES_HOST || 'db';
 var postgresPort = parseInt(process.env.POSTGRES_PORT || '5432');
 var postgresUser = process.env.POSTGRES_USER || 'postgres';
-var postgresPassword = process.env.POSTGRES_PASSWORD || 'postgres';
+var postgresPassword = process.env.POSTGRES_PASSWORD;
+if (!postgresPassword) throw new Error('POSTGRES_PASSWORD must be supplied externally');
 var postgresDatabase = process.env.POSTGRES_DB || 'postgres';
 
 io.on('connection', function (socket) {
@@ -27,50 +27,17 @@ var pool = new Pool({
   port: postgresPort,
   user: postgresUser,
   password: postgresPassword,
-  database: postgresDatabase
+  database: postgresDatabase,
+  connectionTimeoutMillis: 3000,
+  query_timeout: 3000,
+  max: 4
 });
 
-async.retry(
-  {times: 1000, interval: 1000},
-  function(callback) {
-    pool.connect(function(err, client, done) {
-      if (err) {
-        console.error("Waiting for db");
-      }
-      callback(err, client);
-    });
-  },
-  function(err, client) {
-    if (err) {
-      return console.error("Giving up");
-    }
-    console.log("Connected to db");
-    getVotes(client);
-  }
+var poller = require('./vote-poller').createVotePoller(
+  pool,
+  function (votes) { io.sockets.emit('scores', JSON.stringify(votes)); }
 );
-
-function getVotes(client) {
-  client.query('SELECT vote, COUNT(id) AS count FROM votes GROUP BY vote', [], function(err, result) {
-    if (err) {
-      console.error("Error performing query: " + err);
-    } else {
-      var votes = collectVotesFromResult(result);
-      io.sockets.emit("scores", JSON.stringify(votes));
-    }
-
-    setTimeout(function() {getVotes(client) }, 1000);
-  });
-}
-
-function collectVotesFromResult(result) {
-  var votes = {a: 0, b: 0};
-
-  result.rows.forEach(function (row) {
-    votes[row.vote] = parseInt(row.count);
-  });
-
-  return votes;
-}
+poller.start();
 
 app.use(express.urlencoded());
 app.use(express.static(__dirname + '/views'));
@@ -84,10 +51,9 @@ app.get('/healthz', function (req, res) {
 });
 
 app.get('/readyz', async function (req, res) {
-  try {
-    await pool.query('SELECT 1');
+  if (poller.ready()) {
     res.status(200).send('ready');
-  } catch (err) {
+  } else {
     res.status(503).send('database unavailable');
   }
 });
@@ -95,4 +61,11 @@ app.get('/readyz', async function (req, res) {
 server.listen(port, function () {
   var port = server.address().port;
   console.log('App running on port ' + port);
+});
+
+process.on('SIGTERM', async function () {
+  await poller.stop();
+  io.close();
+  server.close();
+  await pool.end();
 });

@@ -1,7 +1,7 @@
 locals {
-  vote_url    = "http://vote.127.0.0.1.nip.io:8080"
-  result_url  = "http://result.127.0.0.1.nip.io:8080"
-  grafana_url = "http://grafana.127.0.0.1.nip.io:8080"
+  vote_url    = "http://vote.${var.host_suffix}:${var.http_port}"
+  result_url  = "http://result.${var.host_suffix}:${var.http_port}"
+  grafana_url = "http://grafana.${var.host_suffix}:${var.http_port}"
   grafana_portable_dashboard = {
     annotations = {
       list = []
@@ -68,7 +68,7 @@ locals {
               type = "prometheus"
               uid  = "Prometheus"
             }
-            expr         = "sum(kube_pod_status_phase{namespace=\"voting\",phase=\"Running\"})"
+            expr         = "sum(kube_pod_status_phase{namespace=\"${var.app_namespace}\",phase=\"Running\"})"
             legendFormat = "running pods"
             refId        = "A"
           }
@@ -135,7 +135,7 @@ locals {
               type = "prometheus"
               uid  = "Prometheus"
             }
-            expr         = "sum(kube_pod_container_status_restarts_total{namespace=\"voting\"})"
+            expr         = "sum(kube_pod_container_status_restarts_total{namespace=\"${var.app_namespace}\"})"
             legendFormat = "container restarts"
             refId        = "A"
           }
@@ -226,7 +226,7 @@ locals {
               type = "prometheus"
               uid  = "Prometheus"
             }
-            expr         = "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"voting\",pod!=\"\",container!=\"POD\",image!=\"\"}[5m]))"
+            expr         = "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"${var.app_namespace}\",pod!=\"\",container!=\"POD\",image!=\"\"}[5m]))"
             legendFormat = "{{pod}}"
             refId        = "A"
           }
@@ -317,7 +317,7 @@ locals {
               type = "prometheus"
               uid  = "Prometheus"
             }
-            expr         = "sum by (pod) (container_memory_working_set_bytes{namespace=\"voting\",pod!=\"\",container!=\"POD\",image!=\"\"})"
+            expr         = "sum by (pod) (container_memory_working_set_bytes{namespace=\"${var.app_namespace}\",pod!=\"\",container!=\"POD\",image!=\"\"})"
             legendFormat = "{{pod}}"
             refId        = "A"
           }
@@ -408,7 +408,7 @@ locals {
               type = "prometheus"
               uid  = "Prometheus"
             }
-            expr         = "sum by (deployment) (kube_deployment_status_replicas_available{namespace=\"voting\"})"
+            expr         = "sum by (deployment) (kube_deployment_status_replicas_available{namespace=\"${var.app_namespace}\"})"
             legendFormat = "{{deployment}}"
             refId        = "A"
           }
@@ -527,12 +527,13 @@ resource "kubernetes_namespace_v1" "monitoring" {
 
 resource "kubernetes_namespace_v1" "app" {
   metadata {
-    name = var.app_namespace
-    labels = {
+    name        = var.app_namespace
+    annotations = var.isolated_test ? { "testing.portable-voting/release" = var.app_release } : {}
+    labels = merge({
       "pod-security.kubernetes.io/enforce" = "restricted"
       "pod-security.kubernetes.io/audit"   = "restricted"
       "pod-security.kubernetes.io/warn"    = "restricted"
-    }
+    }, var.isolated_test ? { "testing.portable-voting/isolated" = "true" } : {})
   }
 }
 
@@ -587,7 +588,7 @@ resource "helm_release" "traefik" {
 }
 
 resource "helm_release" "voting_app" {
-  name      = "voting"
+  name      = var.app_release
   chart     = "${path.module}/../../charts/voting-app"
   namespace = kubernetes_namespace_v1.app.metadata[0].name
 
@@ -596,6 +597,26 @@ resource "helm_release" "voting_app" {
 
   values = [
     yamlencode({
+      vote = {
+        image = {
+          repository = var.image_repositories["vote"]
+          tag        = var.image_tag
+        }
+        ingress = { host = "vote.${var.host_suffix}" }
+      }
+      result = {
+        image = {
+          repository = var.image_repositories["result"]
+          tag        = var.image_tag
+        }
+        ingress = { host = "result.${var.host_suffix}" }
+      }
+      worker = {
+        image = {
+          repository = var.image_repositories["worker"]
+          tag        = var.image_tag
+        }
+      }
       postgres = {
         password = var.postgres_password
       }
@@ -648,9 +669,25 @@ resource "helm_release" "prometheus" {
       }
       "kube-state-metrics" = {
         enabled = true
+        resources = {
+          requests = { cpu = "30m", memory = "64Mi" }
+          limits   = { cpu = "200m", memory = "192Mi" }
+        }
       }
       "prometheus-node-exporter" = {
         enabled = true
+        resources = {
+          requests = { cpu = "20m", memory = "32Mi" }
+          limits   = { cpu = "100m", memory = "128Mi" }
+        }
+      }
+      configmapReload = {
+        prometheus = {
+          resources = {
+            requests = { cpu = "10m", memory = "32Mi" }
+            limits   = { cpu = "100m", memory = "128Mi" }
+          }
+        }
       }
     })
   ]
@@ -674,13 +711,26 @@ resource "helm_release" "grafana" {
     yamlencode({
       adminUser     = "admin"
       adminPassword = var.grafana_admin_password
+      testFramework = { enabled = false }
+      downloadDashboards = {
+        resources = {
+          requests = { cpu = "10m", memory = "32Mi" }
+          limits   = { cpu = "100m", memory = "128Mi" }
+        }
+      }
+      initChownData = {
+        resources = {
+          requests = { cpu = "10m", memory = "32Mi" }
+          limits   = { cpu = "100m", memory = "128Mi" }
+        }
+      }
       service = {
         type = "ClusterIP"
       }
       ingress = {
         enabled          = true
         ingressClassName = "traefik"
-        hosts            = ["grafana.127.0.0.1.nip.io"]
+        hosts            = ["grafana.${var.host_suffix}"]
       }
       persistence = {
         enabled = false
@@ -693,7 +743,7 @@ resource "helm_release" "grafana" {
               name      = "Prometheus"
               type      = "prometheus"
               uid       = "Prometheus"
-              url       = "http://prometheus-server.monitoring.svc.cluster.local"
+              url       = "http://prometheus-server.${var.monitoring_namespace}.svc.cluster.local"
               access    = "proxy"
               isDefault = true
             }

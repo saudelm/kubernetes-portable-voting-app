@@ -4,12 +4,11 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "node --check server.js && node --check views/app.js"
+    "test": "node --check server.js && node --check views/app.js && node --test tests/*.test.js"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "async": "3.2.6",
     "express": "5.2.1",
     "pg": "8.22.0",
     "socket.io": "4.8.3"

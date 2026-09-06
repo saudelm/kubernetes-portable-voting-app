@@ -1,60 +1,83 @@
 # Portabilitaetsevaluation
 
-## Untersuchungslogik
+## Gegenstand und Nachweisgrenzen
 
-Die Evaluation trennt drei Evidenzarten:
-
-1. **Statische Evidenz:** Vergleich der lokal und fuer GKE gerenderten Helm-Manifeste.
-2. **Bereitstellungsevidenz:** Terraform-, Helm- und Kubernetes-Ausgaben aus jeder realen Zielumgebung.
-3. **Laufzeitevidenz:** reproduzierbare Tests T1 bis T4 mit Zeitstempel und Nachweisdatei.
-
-Statische Ergebnisse duerfen nicht als erfolgreiche Cloud-Bereitstellung bezeichnet werden.
+Untersucht werden die Bereitstellung derselben Anwendung mit einem gemeinsamen
+Helm-Chart und ausgewaehlte Betriebseigenschaften auf K3d/K3s und GKE.
+Datenmigration ist nicht Gegenstand. T2 prueft Datenerhalt auf demselben Volume.
+Zwei Vote- und zwei Result-Replikate sind eine gemeinsame Versuchsentscheidung,
+keine Voraussetzung fuer einen Load Balancer und keine Hochverfuegbarkeitsgarantie.
+Worker, Redis und PostgreSQL besitzen jeweils eine Instanz.
 
 ## Kriterien
 
-| Kriterium | Operationalisierung | Evidenz |
+| Kriterium | Operationalisierung | Nachweis |
 |---|---|---|
-| K1 Artefaktwiederverwendung | gleiche Kubernetes-Objektidentitaeten in beiden Renderings | `evidence/portability-comparison.json` |
-| K2 Begrenzte Anpassung | Unterschiede nur in vorab definierten Parameterklassen | statischer Felddiff |
-| K3 Reproduzierbarkeit | Bereitstellung aus dokumentierten Befehlen und versionierten Dateien | Terraform-/Helm-Ausgaben |
-| K4 Funktionsfaehigkeit | Vote wird nach dem Durchstich in Result angezeigt | T1 je Umgebung |
-| K5 Betriebsverhalten | Persistenz, Selbstheilung und Policy-Durchsetzung funktionieren | T2 bis T4 je Umgebung |
-| K6 Grenzen | verbleibende Provider-, Storage-, Netzwerk- und Betriebsbindung ist dokumentiert | Analyse und Fehlerprotokoll |
+| K1 Artefaktwiederverwendung | Gemeinsames Chart, identische Objektidentitaeten; Unterschiede sichtbar | Quellstand und Anpassungsmatrix |
+| K2 Begrenzte Anpassung | Konkrete Feld-Wert-Paare und begruendete Ursachen | Anpassungsmatrix und Werteprofile |
+| K3 Keine unerwartete Abweichung | Jede nicht freigegebene Struktur- oder Wertaenderung fuehrt zu FAIL | Comparator und Regressionstests |
+| K4 Funktion | Exakte Stimmenzeilen, Stimmaenderung und sichtbare Live-Ergebnisse | T1 in beiden Zielumgebungen |
+| K5 Ausgewaehlter Betrieb | Gleicher Speicher, Pod-Ersatz, Wiederverbindung, kontrollierte Netzisolation und Monitoring | T2-T4 sowie echte Messdaten |
+| K6 Beobachteter Aufwand | Neue Arbeitsschritte und Zeiten, Fehler und Wiederherstellung | Zeitprotokoll der neuen Laeufe |
 
-## Statischer Befund
+K1-K3 sind statische Pruefungen. Ihre Erfuellung bedeutet nicht, dass K4-K6
+ebenfalls erfuellt sind. Eine Prozentzahl fuer die Portabilitaet wird nicht berechnet.
 
-`scripts/compare-portability.rb` rendert beide Values-Varianten und vergleicht alle Objekte strukturiert. Der aktuelle Stand ergibt:
+## Statische Anpassungsmatrix
 
-- 35 lokale und 35 GKE-Objekte,
-- 35 gemeinsame Objektidentitaeten und damit 100 % Objektwiederverwendung,
-- 602 von 613 beziehungsweise 98,21 % gleiche Blattwerte,
-- elf erwartete Unterschiede in fuenf Kategorien,
-- keine unerwartete Abweichung.
+`scripts/compare-portability.rb` rendert zwei festgelegte Beispielprofile.
+Leere Maps und Listen bleiben eigene Werte; fehlende Felder werden nicht mit
+vorhandenen leeren Strukturen verwechselt. Doppelte Objektidentitaeten werden
+abgelehnt. Nicht nur Feldnamen, sondern auch die erwarteten Werte sind begrenzt.
 
-Die elf Unterschiede sind drei Image-Referenzen, zwei Replikatzahlen, zwei externe Hostnamen, drei Plattform-Netzwerkwerte und eine StorageClass. Die Werte belegen eine weitgehende Wiederverwendung der Anwendungsmanifeste, nicht die vollstaendige Infrastrukturunabhaengigkeit.
+Die Beispiele verwenden Dokumentationsadressen und Testplatzhalter, keine
+Laufzeit-Zugangsdaten. Die Matrix prueft dieses kanonische Profil, nicht beliebige
+Live-Manifeste. Andere konkrete Hosts, Registry-Pfade oder CNI-Adressen muessen
+gesondert aus dem realen Versuch dokumentiert werden.
 
-## Laufzeittests
-
-| Test | Ziel | Erfolgskriterium |
+| Kategorie | Beispiel | Einordnung |
 |---|---|---|
-| T1 Durchstich | Ende-zu-Ende-Funktion | abgegebene Stimme erscheint in Result |
-| T2 Persistenz | Zustand nach Pod-Ersatz | Tabelleninhalt vor und nach PostgreSQL-Pod-Neustart ist gleich |
-| T3 Selbstheilung | Controllerverhalten | geloeschte Vote-Pods werden ersetzt und alle Replikate sind wieder Ready |
-| T4 Netzisolation | Policy-Wirkung | Vote erreicht Redis, aber nicht PostgreSQL |
+| Plattformnotwendigkeit | lokale StorageClass gegen GKE-StorageClass | Unterschiedlicher Provisioner; PVC-Bindung und T2 notwendig |
+| Plattformnotwendigkeit | GKE-DNS-Selektoren und Probe-Quelladresse | Vom tatsaechlichen Cluster abhaengig; DNS/Readiness/T4 pruefen |
+| Umgebungsparameter | Registry-Pfade und Ingress-Hosts | Andere Bezugs- oder Zugriffsadresse; Image-IDs und Funktion pruefen |
+| Gemeinsame Versuchsentscheidung | Vote=2, Result=2 | Kein Plattformunterschied; kein Hochverfuegbarkeitsnachweis |
+| Infrastruktur | K3d/Docker gegen GKE-Netzwerk und Knoten | Nicht durch den Anwendungs-Chartvergleich abgedeckt |
+| Anwendung | Plattformunabhaengiger Anwendungscode | Ein Quellstand, architekturgerechte Builds und echte Durchstiche erforderlich |
 
-Die Befehle und Nachweisfelder stehen in `docs/gke-deployment.md` und `docs/gke-ergebnisse-VORLAGE.md`.
+Beim aktuellen Beispielprofil sind neun konkrete Feldabweichungen vorgesehen.
+Die Anzahl ist beschreibend, kein Qualitaetsmass. Ein falscher sicherheits- oder
+speicherrelevanter Wert kann trotz zahlreicher gleicher Felder entscheidend sein.
 
-Der reale GKE-Lauf vom 20.08.2026 und der finale lokale Lauf vom 02.09.2026 bestanden jeweils T1 bis T4. Ihre Nachweise liegen unter `evidence/gke-20260820T105218Z/` und `evidence/local-20260902T142914Z/`. K4 und K5 sind damit fuer die definierten Testszenarien in beiden Zielumgebungen erfuellt. Daraus folgt kein Nachweis fuer Hochverfuegbarkeit, Backup, Lastfestigkeit oder beliebige andere Anwendungen.
+## Laufzeitplan
 
-## Umgebungsbindung
+Der verbindliche Ablauf steht in `docs/evaluation-runbook.md`.
+Alle Tests laufen nur in einer eigens markierten Installation mit neuem Speicher
+und anfangs leerer Stimmtabelle. Eine vorhandene Demo ist kein Testziel.
 
-- K3d-Portabbildungen sind spezifisch fuer den lokalen Docker-Host.
-- GKE erfordert Projekt, Abrechnung, IAM, API-Aktivierung und regionale Ressourcen.
-- nip.io ist eine Experimenthilfe und kein produktives DNS-Modell.
-- StorageClass, Volume-Implementierung und Datenmigration bleiben infrastrukturspezifisch.
-- NetworkPolicy-Verhalten haengt vom CNI ab.
-- Oeffentliche oder authentifizierte Registry-Erreichbarkeit muss je Umgebung geloest werden.
+- T1: mehrere eindeutige Waehler, beide Optionen, eine Stimmaenderung; vollstaendige Zeilen und WebSocket/DOM pruefen.
+- T2: PostgreSQL-Pod ersetzen; vollstaendige Zeilen, PVC/PV-Zuordnung und neue Pod-UID vergleichen; Result/Worker duerfen dabei nicht neu starten.
+- T3: beide Vote-Pods ersetzen; neue UIDs und Ready-Zustand sowie anschliessende Fachfunktion pruefen.
+- T4: DNS und Werkzeugausfuehrung separat pruefen; CONNECTED/BLOCKED zweimal gegen denselben PostgreSQL-Endpunkt mit eng begrenzten Kontrollregeln pruefen.
+- Monitoring: echte Daten des Test-Namespaces in Prometheus und ueber die Grafana-Datenquelle abfragen.
 
-## Gueltigkeitsgrenzen
+T1-T4 werden je Umgebung dreimal mit demselben Runner ausgefuehrt.
+Ein Werkzeugfehler ist ERROR, keine bestaetigte Netzsperre.
+Nicht ausgefuehrte Pruefungen sind NOT_RUN. Fehlgeschlagene Laeufe bleiben erhalten.
 
-Der Demonstrator untersucht eine Anwendung, zwei konkrete Zielumgebungen und einen kurzen Beobachtungszeitraum. Er erlaubt keine Aussage ueber alle Kubernetes-Distributionen, Langzeitbetrieb, Hochverfuegbarkeit, Lastspitzen oder eine vollstaendige Cloud-Migration. K3d ist eine lokale Naeherung an On-Premise und kein Ersatz fuer einen realen Bare-Metal- oder Virtualisierungscluster.
+## Historische und neue Evidenz
+
+Die bisherigen Ordner dokumentieren reale fruehere Arbeiten, aber unterschiedliche
+Images, Quellstaende und schwaechere Pruefkriterien. Sie werden nicht umetikettiert.
+Erst ein sauberer finaler Commit, dessen Builds, tatsaechliche Runtime-Image-IDs
+und neue Ergebnisse gemeinsam vorliegen, schliessen B4.
+
+Ein neuer Lauf im bestehenden GKE-Cluster misst keinen kompletten Cloud-Neuaufbau.
+Nur tatsaechlich beobachtete Schritte und Zeiten werden ausgewertet. Drei
+Wiederholungen erlauben keine allgemeine Aussage ueber Verfuegbarkeit, Sicherheit,
+Lastfestigkeit oder langfristigen Betrieb.
+
+## Verbleibende Bindungen
+
+Storage-Implementierung, CNI, Cloud-IAM, Registry-Zugriff, Clusterbetrieb und DNS
+bleiben umgebungsabhaengig. Kubernetes abstrahiert diese Unterschiede nicht
+vollstaendig. K3d ist eine Labornaeherung an On-Premise, kein Unternehmenscluster.

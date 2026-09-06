@@ -1,0 +1,20 @@
+Local Kubernetes evidence run
+Started UTC: 2026-09-02T13:57:47Z
+Started local: 2026-09-02T15:57:47+0200
+Kubectl context: k3d-portable-voting
+
+T1 - fachlicher Durchstich
+PASS | T1 Health-Endpunkte und Stimmenfluss (Datensaetze 0 -> 1)
+
+T2 - Persistenz nach PostgreSQL-Pod-Ersatz
+PASS | T2 Datenbestand nach PostgreSQL-Pod-Ersatz unveraendert
+
+T3 - Selbstheilung des Vote-Deployments
+PASS | T3 Vote-Pod automatisch mit neuer UID wiederhergestellt
+
+T4 - NetworkPolicy
+PASS | T4 erlaubter Vote-zu-Redis-Verbindungsweg erreichbar
+PASS | T4 unerlaubter Vote-zu-PostgreSQL-Verbindungsweg blockiert
+PASS | Grafana-Health-Endpunkt erreichbar
+Finished UTC: 2026-09-02T13:58:45Z
+Evidence directory: /Users/saud/Documents/Codex/2026-06-17/files-mentioned-by-the-user-sachen/thesis_project/04_implementation/kubernetes-portable-voting-app/evidence/local-20260902T135746Z

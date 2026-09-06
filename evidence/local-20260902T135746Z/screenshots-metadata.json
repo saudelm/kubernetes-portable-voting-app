@@ -1,0 +1,23 @@
+{
+  "viewport": "1440x900",
+  "captures": [
+    {
+      "file": "t1-vote-view.png",
+      "url": "http://vote.127.0.0.1.nip.io:8080/",
+      "capturedAtUtc": "2026-09-02T14:05:44.036Z",
+      "title": "Cats vs Dogs!"
+    },
+    {
+      "file": "t1-result-view.png",
+      "url": "http://result.127.0.0.1.nip.io:8080/",
+      "capturedAtUtc": "2026-09-02T14:05:45.427Z",
+      "title": "Cats vs Dogs -- Result"
+    },
+    {
+      "file": "grafana-view.png",
+      "url": "http://grafana.127.0.0.1.nip.io:8080/d/portable-voting-overview/portable-voting-app-kubernetes-overview?orgId=1&refresh=5s&from=now-6h&to=now&timezone=browser",
+      "capturedAtUtc": "2026-09-02T14:05:57.806Z",
+      "title": "Portable Voting App / Kubernetes Overview - Kubernetes - Dashboards - Grafana"
+    }
+  ]
+}

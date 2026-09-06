@@ -2,7 +2,7 @@
 
 Dieser Prototyp untersucht Kubernetes als Grundlage einer portierbaren, containerzentrierten Managementumgebung. Dieselbe Anwendung und dasselbe Helm-Chart werden lokal auf K3d/K3s und in Google Kubernetes Engine (GKE) eingesetzt. Terraform verwaltet die plattformspezifische Infrastruktur und die gemeinsamen Add-ons.
 
-Der Prototyp ist ein Demonstrator fuer eine Bachelorarbeit und keine produktionsreife Plattform. Der GKE-Lauf wurde am 20.08.2026 und der finale lokale Lauf am 02.09.2026 real durchgefuehrt und dokumentiert. In beiden Umgebungen wurden die Testfaelle T1 bis T4 bestanden.
+Der Prototyp ist ein Demonstrator fuer eine Bachelorarbeit und keine produktionsreife Plattform. Die historischen Versuche ab August 2026 betreffen unterschiedliche Quell- und Image-Staende und teilweise schwaechere Tests. Sie bilden keinen gemeinsamen finalen Nachweis. Die aktuelle Ueberarbeitung verlangt einen neuen, zusammenhaengenden Lauf des festgelegten Quellstands in beiden Umgebungen. Ohne diesen Lauf bleibt die Abnahme offen.
 
 ## Architektur
 
@@ -28,6 +28,13 @@ Der Prototyp ist ein Demonstrator fuer eine Bachelorarbeit und keine produktions
 Die beiden Browseroberflaechen verwenden nur mitgelieferte Assets. Die alte
 AngularJS- und CDN-Abhaengigkeit der Referenzanwendung ist im Prototyp entfernt.
 
+Seit der lokalen Konfigurationsanpassung vom 06.09.2026 sehen beide Values-Profile
+je zwei Vote- und Result-Replikate vor. Mit Worker, Redis und PostgreSQL ergibt
+das sieben Anwendungspods im stabilen Sollzustand. Dies ist eine gemeinsame
+Versuchskonfiguration, keine GKE-Voraussetzung und kein Hochverfuegbarkeitsnachweis.
+Die historischen lokalen Versuche mit insgesamt fuenf Pods bleiben unveraendert.
+Das Angleichen der Replikazahlen ersetzt keinen vollstaendigen finalen Testlauf.
+
 Die Dateien `docker-compose*.yml`, `docker-stack.yml` und `k8s-specifications/`
 dokumentieren den analysierten Ausgangsstand der Referenzanwendung. Der in der
 Arbeit bewertete Prototyp wird ausschliesslich ueber das gemeinsame Helm-Chart
@@ -36,6 +43,15 @@ und die beiden Terraform-Module bereitgestellt.
 ## Lokaler Schnellstart (macOS/Linux)
 
 Docker Desktop starten und im Projektverzeichnis ausfuehren:
+
+**Nur fuer eine neue Demo-Installation.** Eine vorhandene Demo nicht mit diesen
+Aufbaubefehlen ueberschreiben. Die isolierten Evaluationslaeufe stehen in
+`docs/evaluation-runbook.md`. Kennwoerter fuer neue Installationen extern setzen:
+
+```bash
+export TF_VAR_postgres_password="$(openssl rand -base64 24)"
+export TF_VAR_grafana_admin_password="$(openssl rand -base64 24)"
+```
 
 ```bash
 ./scripts/tools-check.sh
@@ -66,7 +82,9 @@ Lokale Endpunkte:
 - Result: `http://result.127.0.0.1.nip.io:8080`
 - Grafana: `http://grafana.127.0.0.1.nip.io:8080`
 
-Das lokale Grafana-Laborkonto lautet standardmaessig `admin` / `admin`. Dieses Kennwort ist ausschliesslich fuer den lokalen Demonstrator vorgesehen.
+Grafana verwendet den Benutzer `admin` und das extern gesetzte Kennwort. Es gibt
+im aktuellen Terraform-Modul keinen Kennwortdefault. Diese Quelltextaenderung
+rotiert die Zugangsdaten einer bereits laufenden Demo nicht.
 
 ## Windows
 
@@ -99,22 +117,32 @@ Internetzugriff.
 Nur den Portabilitaetsvergleich ausfuehren:
 
 ```bash
-make portability
+make portability OUTPUT=evidence/matrix-NEUER-LAUF
 ```
 
 Die erzeugten Nachweise liegen unter:
 
-- `evidence/portability-comparison.json`
-- `evidence/portability-comparison.md`
+- `evidence/matrix-NEUER-LAUF/adaptation-matrix.json`
+- `evidence/matrix-NEUER-LAUF/adaptation-matrix.md`
 
-Aktueller statischer Befund: 35 von 35 Objektidentitaeten werden wiederverwendet; 602 von 613 Blattwerten beziehungsweise 98,21 % sind gleich. Die elf erwarteten Unterschiede betreffen drei Image-Referenzen, zwei Replikatzahlen, zwei externe Hostnamen, drei Plattform-Netzwerkwerte und eine StorageClass. Unerwartete Unterschiede gibt es nicht. Dieser Vergleich ist getrennt von der Laufzeitevidenz zu lesen.
+Die bisher archivierte statische Auswertung gehoert zum historischen Profil mit
+unterschiedlichen Vote-/Result-Replikazahlen. Sie beschreibt nicht die am
+06.09.2026 angeglichenen Profile. Eine YAML-Gleichheitsquote ist kein geeignetes
+Mass fuer die Portabilitaet der ganzen Umgebung. Die im Gutachten beschriebenen
+Vergleichsfehler werden durch Regressionstests geprueft. Der neue Vergleich
+erhaelt leere Strukturen und erlaubt nur konkrete Feld-Wert-Paare. Die Matrix
+trennt Ursachen, Umsetzung und erforderliche Laufzeitnachweise. Ein statischer
+PASS ersetzt keinen Laufzeittest. Historische Auswertungen nicht ueberschreiben.
 
 ## Laufzeitnachweise
 
-Der vollstaendige lokale Prueflauf fuehrt T1 bis T4 aus und sammelt die maschinenlesbaren Nachweise automatisch:
+Der gemeinsame Runner verlangt explizite Ziele und lehnt den lokalen Demo-Kontext
+und unmarkierte Namespaces ab. Er prueft T1 bis T4 jeweils dreimal. Er unterscheidet
+`PASS`, `FAIL`, `ERROR` und `NOT_RUN`; die konkrete Aufrufanleitung steht in
+`docs/evaluation-runbook.md`.
 
 ```bash
-./scripts/run-local-evidence.sh
+python3 scripts/evidence_runner.py --help
 ```
 
 Die einfachere Zustandsaufnahme und die GKE-Variante bleiben getrennt verfuegbar:
@@ -124,13 +152,23 @@ Die einfachere Zustandsaufnahme und die GKE-Variante bleiben getrennt verfuegbar
 ./scripts/collect-evidence.sh gke
 ```
 
-Die Ausgabe wird zeitgestempelt unter `evidence/` abgelegt. Der finale lokale Nachweis liegt unter `evidence/local-20260902T142914Z/`; der reale GKE-Nachweis unter `evidence/gke-20260820T105218Z/`. Beide enthalten Cluster-, Knoten-, Workload- und Testdaten. Zusaetzlich enthaelt der lokale Ordner das statische Gesamtpruefprotokoll und Bildschirmaufnahmen, der GKE-Ordner den vollstaendigen Abbaunachweis. `docs/gke-ergebnisse-VORLAGE.md` bleibt als Checkliste fuer einen Wiederholungslauf erhalten.
+Historische Nachweise liegen unter `evidence/local-20260902T142914Z/` und
+`evidence/gke-20260820T105218Z/`. Sie bleiben unveraendert und duerfen nicht dem
+neuen Quellstand zugeschrieben werden. Zustandsaufnahmen allein sind kein
+bestandener Testrun. Neue Ausgaben muessen in einem neuen Verzeichnis liegen.
 
 ## GKE
 
-Die vollstaendige Anleitung befindet sich in `docs/gke-deployment.md`. Terraform reserviert vorab eine regionale IP und leitet daraus die nip.io-Hostnamen ab. Dadurch genuegt ein geplanter Terraform-Durchlauf; eine manuelle Aenderung von Helm-Werten zwischen zwei Laeufen ist nicht erforderlich.
+Die Grenzen fuer einen erneuten Versuch stehen in `docs/gke-deployment.md`.
+Der aktuelle Auftrag erlaubt nach gesonderter Freigabe nur eine Testinstallation
+im bestehenden Cluster. Kein Konto-Upgrade, kein neuer Cluster, kein neuer
+Load Balancer und keine automatische Ressourcenerweiterung. Das vorhandene
+Terraform-Infrastrukturmodul ist kein Auftrag, die Cloud neu aufzubauen.
 
-Fuer GKE sind ein unveraenderlicher Commit-SHA als `image_tag` sowie sichere PostgreSQL- und Grafana-Kennwoerter Pflicht. Der dokumentierte Versuch nutzte den Commit `82cde44a838d36f07cc47d9f29351d039cdf0244`; danach wurden die Cloud-Ressourcen mit `terraform destroy` entfernt und der leere Zielzustand unabhaengig kontrolliert.
+Fuer GKE sind ein eindeutig zugeordnetes Image und externe Kennwoerter Pflicht.
+Der Versuch vom 20.08.2026 nutzte den Commit
+`82cde44a838d36f07cc47d9f29351d039cdf0244`. Sein damaliger Abbaunachweis sagt
+nichts ueber den heutigen Cloud-Zustand aus. Die Demo wird nicht geloescht.
 
 ## Grenzen
 

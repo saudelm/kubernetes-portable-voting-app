@@ -781,9 +781,25 @@ resource "helm_release" "prometheus" {
       }
       "kube-state-metrics" = {
         enabled = true
+        resources = {
+          requests = { cpu = "30m", memory = "64Mi" }
+          limits   = { cpu = "200m", memory = "192Mi" }
+        }
       }
       "prometheus-node-exporter" = {
         enabled = true
+        resources = {
+          requests = { cpu = "20m", memory = "32Mi" }
+          limits   = { cpu = "100m", memory = "128Mi" }
+        }
+      }
+      configmapReload = {
+        prometheus = {
+          resources = {
+            requests = { cpu = "10m", memory = "32Mi" }
+            limits   = { cpu = "100m", memory = "128Mi" }
+          }
+        }
       }
     })
   ]
@@ -807,6 +823,19 @@ resource "helm_release" "grafana" {
     yamlencode({
       adminUser     = "admin"
       adminPassword = var.grafana_admin_password
+      testFramework = { enabled = false }
+      downloadDashboards = {
+        resources = {
+          requests = { cpu = "10m", memory = "32Mi" }
+          limits   = { cpu = "100m", memory = "128Mi" }
+        }
+      }
+      initChownData = {
+        resources = {
+          requests = { cpu = "10m", memory = "32Mi" }
+          limits   = { cpu = "100m", memory = "128Mi" }
+        }
+      }
       service = {
         type = "ClusterIP"
       }

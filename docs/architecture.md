@@ -19,9 +19,9 @@ Der Prototyp demonstriert eine portierbare Managementumgebung fuer eine kleine M
 - Der in K3s enthaltene Traefik wird bei der Clustererzeugung deaktiviert.
 - Terraform installiert eine explizit versionierte Traefik-Version, Anwendung und Monitoring.
 - Der K3d-Load-Balancer bildet HTTP auf Host-Port `8080` und HTTPS auf `8443` ab.
-- Lokale Images werden in den Cluster importiert und tragen den Tag `local`.
-- Fuer PostgreSQL greift die Standard-StorageClass des Clusters.
-- Vote und Result laufen mit je einem Pod als ressourcenschonende lokale Funktionsreferenz.
+- Die historische Demo verwendet importierte `:local`-Images. Neue Tests verwenden separate, revisions- und architekturbezogene Images mit dokumentierten Digests.
+- Fuer PostgreSQL wird `local-path` verwendet. Der isolierte Testcluster hat eigene Volumes und einen freien HTTP-Port, nicht die Demo-Ports.
+- Vote und Result laufen im gemeinsamen Vergleichsprofil mit je zwei Pods, Worker, Redis und PostgreSQL je einfach. Die historische lokale Installation hatte fuenf Pods.
 
 ## GKE-Umgebung
 
@@ -30,33 +30,36 @@ Der Prototyp demonstriert eine portierbare Managementumgebung fuer eine kleine M
 - GKE Dataplane V2 setzt die NetworkPolicies durch.
 - Eine regionale statische IP wird vor dem Ingress-Controller reserviert.
 - Traefik erhaelt diese IP als `loadBalancerIP`; Vote-, Result- und Grafana-Hosts werden daraus abgeleitet.
-- Die Anwendung verwendet unveraenderliche GHCR-Images mit demselben Commit-SHA.
+- Ein Commit-SHA-Tag benennt den Build, ist aber nicht unveraenderlich. Erst Build-Digests und tatsaechlich ausgefuehrte Image-IDs belegen den Inhalt. Historische GKE-Images gehoeren nicht automatisch zum aktuellen Quellstand.
 - PostgreSQL verwendet die GKE-StorageClass `standard-rwo`.
-- Vote und Result laufen mit je zwei Pods, um Verteilung und Wiederherstellung des Sollzustands zu pruefen; die uebrigen Komponenten bleiben einfach ausgefuehrt.
+- Vote und Result laufen wie lokal je zweifach. Das ist eine gemeinsame Versuchsentscheidung, keine GKE-, Load-Balancer- oder Sicherheitsanforderung.
+
+Der beschriebene Infrastrukturaufbau ist historisch. Neue GKE-Tests duerfen nur nach gesonderter Freigabe in isolierten Namespaces und eigenen PVCs des vorhandenen Clusters laufen. Das GKE-Terraform-Modul wird dafuer nicht erneut angewendet; keine neuen Cluster, Node Pools oder Lastverteiler und kein Konto-Upgrade.
 
 ## Anwendungspfad
 
 1. `vote` nimmt eine Stimme an und schreibt sie in Redis.
 2. `worker` liest aus Redis und schreibt den Datensatz nach PostgreSQL.
 3. `result` fragt PostgreSQL ab und aktualisiert die Anzeige ueber Socket.IO.
-4. Vote und Result sind ueber Traefik erreichbar; die Datenkomponenten bleiben als `ClusterIP` intern.
+4. Vote und Result sind ueber Traefik erreichbar; Redis bleibt ueber ClusterIP intern, PostgreSQL ueber einen internen Headless Service.
+5. Result versucht fehlgeschlagene Datenbankabfragen erneut; seine Readiness bleibt bis zur erfolgreichen Abfrage negativ. Worker verbindet sich nach einem Datenbankabbruch wieder und haelt eine bereits entnommene Stimme bis zum erfolgreichen UPSERT im Prozessspeicher.
 
 ## Portabilitaetsmechanismen
 
 - Container kapseln Laufzeitabhaengigkeiten.
 - Kubernetes-Standardobjekte beschreiben den gemeinsamen Sollzustand.
 - Helm parametrisiert Registry, Tag, Replikate, Hosts und StorageClass.
-- Terraform reproduziert Infrastruktur und Plattformdienste.
+- Terraform beschreibt Infrastruktur und Plattformdienste; ein Plan ist kein Laufzeitnachweis.
 - Die statische Analyse vergleicht beide Helm-Renderings auf Objekt- und Feldebene.
-- Laufzeittests pruefen Durchstich, Persistenz, Selbstheilung und Netzisolation getrennt je Zielumgebung.
+- Der gemeinsame Runner prueft Fachfunktion, Volume-Erhalt, Pod-Ersatz und kontrollierte Netzisolation dreimal je Ziel. Implementierung und Unit-Tests sind kein Ersatz fuer noch ausstehende Clusterlaeufe; siehe `evaluation-runbook.md`.
 
 ## Bewusste Grenzen
 
 Der Prototyp untersucht ausschliesslich hostbasiertes HTTP-Routing ueber die Kubernetes-Ingress-API und Traefik. Produktives DNS und TLS sind nicht Bestandteil der Evaluation.
 
-Stateful Portability ist nur teilweise erreicht. Das gemeinsame StatefulSet ist portierbar, das Persistenzmedium und ein belastbarer Migrationsweg sind es nicht automatisch. Der Prototyp enthaelt weder Hochverfuegbarkeit noch Backup/Restore zwischen Clustern.
+Datenmigration ist ausdruecklich nicht Teil der Untersuchung. Das gemeinsame StatefulSet beschreibt die Bereitstellung; T2 untersucht den Erhalt von Testdaten auf demselben Volume nach Pod-Ersatz. Daraus folgt weder ein Datenumzug noch Hochverfuegbarkeit oder Backup/Restore zwischen Clustern.
 
-Die zwei Web-Replikate in GKE belegen daher keine vollstaendige Hochverfuegbarkeit: Es gibt keine garantierte Verteilung auf unterschiedliche Knoten, und PostgreSQL bleibt eine einzelne Instanz.
+Die zwei Web-Replikate je Ziel belegen daher keine vollstaendige Hochverfuegbarkeit: Es gibt keine garantierte Verteilung auf unterschiedliche Knoten, und PostgreSQL bleibt eine einzelne Instanz.
 
 Redis ist bewusst nur eine fluechtige Warteschlange mit `emptyDir`. PostgreSQL ist
 das System of Record; noch nicht durch den Worker verarbeitete Stimmen koennen bei

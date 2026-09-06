@@ -30,10 +30,12 @@ validate:
 	./scripts/validate.sh
 
 portability:
-	ruby scripts/compare-portability.rb
+	@test -n "$(OUTPUT)" || (printf 'Use: make portability OUTPUT=evidence/NEW_DIRECTORY\n'; exit 2)
+	ruby scripts/compare-portability.rb --output "$(OUTPUT)"
 
 evidence:
-	./scripts/run-local-evidence.sh
+	@test -n "$(ARGS)" || (printf 'Supply explicit runner arguments; see docs/evaluation-runbook.md\n'; exit 2)
+	./scripts/run-local-evidence.sh $(ARGS)
 
 install-tools-ps:
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-tools.ps1

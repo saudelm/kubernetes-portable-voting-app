@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Cats vs Dogs!</title>
+    <base href="/index.html">
+    <meta name = "viewport" content = "width=device-width, initial-scale = 1.0">
+    <meta name="keywords" content="docker-compose, docker, stack">
+    <meta name="author" content="Tutum dev team">
+    <link rel='stylesheet' href="/static/stylesheets/style.css" />
+  </head>
+  <body>
+    <div id="content-container">
+      <div id="content-container-center">
+        <h3>Cats vs Dogs!</h3>
+        <form id="choice" name='form' method="POST" action="/">
+          <button id="a" type="submit" name="vote" class="a" value="a">Cats</button>
+          <button id="b" type="submit" name="vote" class="b" value="b">Dogs</button>
+        </form>
+        <div id="tip">
+          (Tip: you can change your vote)
+        </div>
+        <div id="hostname">
+          Processed by container ID voting-voting-app-vote-657598fdd6-vtj2m
+        </div>
+      </div>
+    </div>
+    
+    <script>
+      const vote = "a";
+      const selected = document.getElementById(vote);
+      const other = document.getElementById(vote === "a" ? "b" : "a");
+
+      if (selected && other) {
+        selected.disabled = true;
+        selected.textContent = `${selected.textContent} (selected)`;
+        other.style.opacity = "0.5";
+      }
+    </script>
+    
+  </body>
+</html>

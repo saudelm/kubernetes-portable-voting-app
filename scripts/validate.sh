@@ -4,13 +4,15 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ruby_bin="${RUBY_BIN:-ruby}"
 
-helm lint "$root/charts/voting-app"
+helm lint "$root/charts/voting-app" --set-string postgres.password=static-test-not-a-credential
 helm template voting "$root/charts/voting-app" \
   --namespace voting \
-  --values "$root/charts/voting-app/values.yaml" >/dev/null
+  --values "$root/charts/voting-app/values.yaml" \
+  --set-string postgres.password=static-test-not-a-credential >/dev/null
 helm template voting "$root/charts/voting-app" \
   --namespace voting \
   --values "$root/charts/voting-app/values-gke.yaml" \
+  --set-string postgres.password=static-test-not-a-credential \
   --set-string vote.image.tag=abcdef1 \
   --set-string result.image.tag=abcdef1 \
   --set-string worker.image.tag=abcdef1 \
@@ -30,7 +32,10 @@ python3 -m venv "$python_venv"
 PYTHONPATH="$root/vote" "$python_venv/bin/python" -m unittest discover \
   -s "$root/vote/tests" -p 'test_*.py'
 "$ruby_bin" -c "$root/scripts/compare-portability.rb"
-"$ruby_bin" "$root/scripts/compare-portability.rb"
+"$ruby_bin" "$root/scripts/tests/test_portability.rb"
+comparison_parent="$(mktemp -d)"
+"$ruby_bin" "$root/scripts/compare-portability.rb" --output "$comparison_parent/matrix"
+"$python_venv/bin/python" -m unittest discover -s "$root/scripts/tests" -p 'test_*.py'
 
 (
   cd "$root/result"

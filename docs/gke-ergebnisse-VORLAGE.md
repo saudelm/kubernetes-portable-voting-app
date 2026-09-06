@@ -1,90 +1,54 @@
-# Ergebnisprotokoll fuer Kapitel 6
+# Ergebnisprotokoll des gemeinsamen Testplans
 
-Diese Datei erst nach einer realen Durchfuehrung ausfuellen. Leere Felder bedeuten `nicht erhoben`, nicht `bestanden`.
+Nur tatsaechlich erhobene Werte eintragen. Leere Angaben bedeuten NOT_RUN, nicht PASS. Ausfuehrung und Voraussetzungen stehen in `evaluation-runbook.md`. Diese Vorlage startet keine Cloud-Ressourcen.
 
-## A. Versionen und Rahmen
+## Rahmen und Herkunft
 
-| Angabe | Tatsachlicher Wert |
+| Angabe | Wert / Nachweis |
 |---|---|
-| Durchfuehrungsdatum mit Zeitzone | |
-| Bearbeiter | |
-| Git-Commit-SHA | |
-| Terraform-Version | |
-| Helm-Version | |
-| kubectl-Version | |
-| GKE-Version | |
-| GCP-Projekt (ggf. anonymisiert) | |
-| Zone | |
-| Node-Anzahl und Maschinentyp | |
-| Reservierte Ingress-IP | |
+| Datum, Zeitzone und Bearbeiter | |
+| Expliziter Kontext / Namespace / Release | |
+| Gesonderte GKE-Freigabe, Testkonto, Guthaben, vorhandene Kapazitaet | |
+| Vollstaendiger Commit und sauberer Quellstand | |
+| Buildrecord / Quellhash / Architektur / Build-Digest | |
+| Tatsaechliche Image-IDs und Knotenarchitekturen | |
+| Kubernetes-, kubectl-, Helm- und Terraform-Version | |
+| Eigene Namespace-, PVC- und PV-UIDs | |
+| Replikate Vote/Result/Worker/Redis/PostgreSQL | 2 / 2 / 1 / 1 / 1 |
+| Test-Ingress-Hosts ohne Demo-Daten | |
 
-## B. Bereitstellung
+## Ergebnisse
 
-| Angabe | Tatsachlicher Wert / Nachweisdatei |
-|---|---|
-| Startzeit `terraform apply` | |
-| Endzeit | |
-| Gemessene Dauer | |
-| Terraform-Zusammenfassung | |
-| Anzahl laufender Voting-Pods | |
-| Traefik-IP entspricht Terraform-Output | ja / nein / nicht erhoben |
-| Abweichungen oder manuelle Eingriffe | |
+Jede Umgebung hat drei Wiederholungen. Zustaende: PASS, FAIL, ERROR, NOT_RUN. Keine pauschale Erfolgsaussage aus einem Exitcode oder Screenshot.
 
-## C. Testmatrix
+| Pruefung | Wiederholung 1 | 2 | 3 | Rohdateien |
+|---|---|---|---|---|
+| T1: beide Optionen, Stimmaenderung, exakte Zeilen, WebSocket und Anzeige | | | | |
+| T2: neuer PostgreSQL-Pod, gleiches PVC/PV, alle Testzeilen, Result/Worker ohne Prozessneustart | | | | |
+| T3: zwei neue bereite Vote-UIDs und erneute Fachfunktion | | | | |
+| T4: DNS und bereiter PostgreSQL-Endpunkt; gleicher Weg mit/ohne enge Kontrollregeln, zweimal | | | | |
+| Monitoring: echte Prometheus-Daten direkt und ueber Grafana-Datenquelle | | | | |
 
-| Test | Lokal | GKE | Objektiver Nachweis |
-|---|---|---|---|
-| T1 Vote zu Result | bestanden / fehlgeschlagen / nicht erhoben | bestanden / fehlgeschlagen / nicht erhoben | Screenshot + Health-Ausgabe |
-| T2 PostgreSQL-Persistenz nach Pod-Ersatz | bestanden / fehlgeschlagen / nicht erhoben | bestanden / fehlgeschlagen / nicht erhoben | `t2-before.txt`, `t2-after.txt`, `diff` |
-| T3 Wiederherstellung der Vote-Replikate | bestanden / fehlgeschlagen / nicht erhoben | bestanden / fehlgeschlagen / nicht erhoben | Podnamen und UIDs vor/nach Loeschung |
-| T4 NetworkPolicy erlaubt Redis, sperrt PostgreSQL | bestanden / fehlgeschlagen / nicht erhoben | bestanden / fehlgeschlagen / nicht erhoben | Terminalausgaben beider Verbindungen |
+## Aufwand und Fehler
 
-## D. Screenshots
+| Beginn / Ende | Schritt | Befehlsdauer | Aktive Bedienzeit separat | Status / Fehler / Wiederholung |
+|---|---|---|---|---|
+| | | | | |
 
-Dateinamen ohne Leerzeichen verwenden und keine Kennwoerter oder Tokens zeigen.
+Die Testinstallation im vorhandenen GKE-Cluster ist kein vollstaendiger Cloud-Neuaufbau. Zeiten eines Testzyklus enthalten auch Warte- und Pruefschritte und duerfen nicht als Ausfallzeiten bezeichnet werden.
 
-1. `gke-01-terraform-apply.png` - Apply-Zusammenfassung.
-2. `gke-02-nodes-pods.png` - Nodes und sieben Voting-Pods.
-3. `gke-03-vote.png` - Vote-Oberflaeche mit URL.
-4. `gke-04-result.png` - Result-Oberflaeche mit URL und abgegebener Stimme.
-5. `gke-05-persistenz.png` - Ergebnis nach PostgreSQL-Pod-Ersatz.
-6. `gke-06-self-healing.png` - neue Vote-Pods.
-7. `gke-07-grafana.png` - Dashboard mit sichtbarem Titel.
-8. `gke-08-destroy.png` - Destroy-Zusammenfassung.
+## Anpassungsmatrix
 
-## E. Abweichungsprotokoll
+| Abweichung | Ursache | Umsetzung | Erforderlicher Nachweis | Erhoben? |
+|---|---|---|---|---|
+| Speicherklasse | Plattformintegration | Zielwert local-path / standard-rwo | PVC/PV und T2 | |
+| DNS-/Probe-Pfade | Netzwerkintegration | konkret gepruefte Selektoren und CIDR | Endpunkte, T4, Probes | |
+| Hosts / Image-Bezug | Umgebungsparameter | Values / Build- und Importweg | Zugriff und Runtime-Digests | |
+| Replikate | Gemeinsame Versuchsentscheidung | je zwei Vote/Result | bereite Pods, T3 | |
+| Cluster / externer Zugriff | Infrastruktur | getrennte Module | historische bzw. neue Belege trennen | |
 
-| Zeitpunkt | Befehl/Test | Beobachtung | Ursache | Aenderung | Wiederholung erfolgreich? |
-|---|---|---|---|---|---|
-| | | | | | |
+Keine Portabilitaets-Prozentzahl bilden. Statische Beispielrenderings und reale Runtime-Snapshots sind unterschiedliche Nachweistypen.
 
-## F. Statische Portabilitaetswerte
+## Abschluss
 
-Diese Werte fuer jeden finalen Commit neu aus `evidence/portability-comparison.json` uebernehmen.
-
-| Kennzahl | Wert |
-|---|---:|
-| Objekte lokal | |
-| Objekte GKE | |
-| gemeinsame Objektidentitaeten | |
-| Objektwiederverwendung | |
-| Wiederverwendung der Blattwerte | |
-| erwartete Unterschiede | |
-| unerwartete Unterschiede | |
-
-## G. Formulierungsschablone
-
-Nur mit gemessenen Werten verwenden:
-
-> Die GKE-Bereitstellung wurde am [Datum, Zeitzone] aus dem Commit [SHA] in der Zone [Zone] durchgefuehrt. Der gepruefte Terraform-Plan wurde in [Dauer] angewendet und endete mit [Zusammenfassung]. Im Zielzustand waren [Anzahl] Anwendungs-Pods Ready. T1 [Ergebnis], T2 [Ergebnis], T3 [Ergebnis] und T4 [Ergebnis]. [Abweichungen und Behebung]. Die statische Analyse zeigte [Werte]; diese wird durch die getrennt erhobenen Laufzeitnachweise ergaenzt.
-
-## H. Abbau
-
-| Kontrolle | Ergebnis |
-|---|---|
-| `terraform destroy` abgeschlossen | |
-| GKE-Cluster nicht mehr vorhanden | |
-| Forwarding Rules nicht mehr vorhanden | |
-| reservierte IP nicht mehr vorhanden | |
-| projektbezogene Versuchsdisk nicht mehr vorhanden | |
-| Abschlusszeit | |
+Rohdaten und Pruefsummen sichern. Aenderungen nach einem Fehler erfordern einen neuen zugeordneten Build und betroffene Wiederholungen. Demo und historische Nachweise nicht ueberschreiben. Testressourcen ausschliesslich gezielt und nach Freigabe abbauen; insbesondere kein `terraform destroy` des gemeinsamen GKE-Clusters.

@@ -10,9 +10,9 @@
 - Eine Default-Deny-NetworkPolicy sperrt Ingress und Egress im Anwendungsnamespace.
 - Freigegeben sind nur DNS, Traefik zu Vote/Result, Vote zu Redis, Worker zu Redis/PostgreSQL und Result zu PostgreSQL.
 - GKE verlangt einen Commit-SHA-Image-Tag und mindestens 16 Zeichen lange PostgreSQL- und Grafana-Kennwoerter.
-- Node-Abhaengigkeiten sind exakt gesperrt; `npm audit --omit=dev` meldet fuer den erzeugten Lockstand keine bekannte Schwachstelle.
+- Node-Abhaengigkeiten sind exakt gesperrt. Der Audit ist eine zeitgebundene Pruefung; sein konkretes Ergebnis gehoert zum jeweiligen Testprotokoll.
 - Die Browseroberflaechen laden keine externen Skripte; Vote akzeptiert nur `a` oder `b` und setzt die anonyme Kennung mit `HttpOnly` und `SameSite=Lax`.
-- Die verwendeten Python-, Node.js- und .NET-Laufzeiten befinden sich zum Bearbeitungszeitpunkt im Support.
+- Die Anwendungsversionen sind im Repository dokumentiert. Supportstatus und neue Sicherheitsbefunde muessen zum jeweiligen Einsatzzeitpunkt erneut geprueft werden.
 
 ## Geheimnisse
 
@@ -20,7 +20,7 @@ Das Helm-Chart erzeugt ein Kubernetes Secret. Terraform uebergibt die Werte und 
 
 ## Bekannte Grenzen
 
-- Das lokale Laborkennwort `admin` / `admin` ist absichtlich einfach und darf nicht ausserhalb des lokalen Clusters verwendet werden.
+- Neue lokale und Cloud-Installationen verlangen extern gesetzte Kennwoerter. Die Aenderung rotiert keine bereits verwendeten Demo-Zugangsdaten.
 - TLS ist fuer die nip.io-Experimenthosts nicht eingerichtet.
 - Images sind auf Versionsebene markiert, aber nicht per Digest im Deployment fixiert.
 - Es gibt noch keine Signaturpruefung, Admission Policy, SBOM-Auswertung oder automatisierte Container-Registry-Policy.

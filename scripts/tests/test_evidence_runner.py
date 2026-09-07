@@ -11,6 +11,22 @@ spec.loader.exec_module(m)
 
 
 class EvidenceRunnerTests(unittest.TestCase):
+    def test_readiness_probe_uses_actual_container_port(self):
+        import subprocess
+        with tempfile.TemporaryDirectory() as directory:
+            r = self.outage_runner(directory)
+            r.result_readiness = m.Runner.result_readiness.__get__(r)
+            r.kubectl.return_value = "503\n"
+            self.assertEqual(r.result_readiness("result-1"), 503)
+            probe = r.kubectl.call_args.args[-1]
+            fixture = ("const server=require('http').createServer((req,res)=>{"
+                       "res.statusCode=req.url==='/readyz'?503:404;res.end()});"
+                       "server.listen(0,'127.0.0.1',()=>{"
+                       "process.env.PORT=String(server.address().port);server.unref();"
+                       + probe + "});")
+            output = subprocess.check_output(["node", "-e", fixture], text=True, timeout=15)
+            self.assertEqual(output.strip(), "503")
+
     def outage_runner(self, directory):
         args = SimpleNamespace(output=str(Path(directory) / "run"), release="test",
                                context="k3d-voting-test-new", namespace="voting-test-new",

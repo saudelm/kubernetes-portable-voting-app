@@ -296,7 +296,8 @@ class Runner:
 
     def result_readiness(self, pod):
         # Direct loopback probe still works while an unready pod is removed from its Service.
-        script = ("require('http').get('http://127.0.0.1:4000/readyz',r=>{"
+        script = ("const port=process.env.PORT||4000;"
+                  "require('http').get('http://127.0.0.1:'+port+'/readyz',r=>{"
                   "console.log(r.statusCode);r.resume()}).on('error',e=>{"
                   "console.error(e.message);process.exitCode=1})")
         status = int(self.kubectl("exec", pod, "--", "node", "-e", script).strip())
